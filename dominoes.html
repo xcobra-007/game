@@ -130,8 +130,7 @@ body{
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px 12px}
 .board-chain{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .2s ease}
-.snake-row{display:flex;align-items:center;gap:4px}
-.snake-row.rev{flex-direction:row-reverse}
+.board-line{display:flex;align-items:center;gap:4px}
 /* PASS stamp + draw animations */
 .pass-stamp{position:fixed;transform:translate(-50%,-50%) rotate(-13deg);font-family:var(--font-head);font-weight:900;font-size:2rem;letter-spacing:.04em;padding:5px 16px;border:4px solid currentColor;border-radius:13px;background:rgba(13,13,26,.72);z-index:350;pointer-events:none;text-transform:uppercase;animation:stampPop 1.1s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.5)}
 @keyframes stampPop{0%{opacity:0;transform:translate(-50%,-50%) rotate(-13deg) scale(.3)}22%{opacity:1;transform:translate(-50%,-50%) rotate(-13deg) scale(1.18)}42%{transform:translate(-50%,-50%) rotate(-13deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-92%) rotate(-13deg) scale(1)}}
@@ -547,27 +546,14 @@ function renderReveal(heading,groups){
   rev.innerHTML=`<div class="ov-reveal-h">${heading}</div>${body}`;
   rev.classList.add('on');
 }
-// ═══ SHARED: BOARD SNAKE LAYOUT (no scroll — winds to fit the screen) ═══
-// Packs the domino run into rows that fit the board width, alternating row
-// direction so it reads as one continuous winding snake, then scales the whole
-// block down only if needed so EVERYTHING is visible without scrolling.
+// ═══ SHARED: BOARD LAYOUT (single straight line — scales to fit the screen) ═══
+// Lays the domino run out in one continuous horizontal line, then scales the
+// whole block down only if needed so EVERYTHING is visible without scrolling.
 function renderChain(bd,chainId,scrollId){
   const chain=$(chainId);if(!chain)return;
   if(!bd||!bd.length){chain.innerHTML='<div class="board-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';return}
-  const scroll=$(scrollId);
-  const availW=Math.max((scroll?scroll.clientWidth:900)-24,140);
-  const gap=4;
-  const rows=[];let cur=[],curW=0;
-  for(const t of bd){
-    const w=(t.dbl?62:122)+gap;
-    if(cur.length&&curW+w>availW){rows.push(cur);cur=[];curW=0}
-    cur.push(t);curW+=w;
-  }
-  if(cur.length)rows.push(cur);
-  chain.innerHTML=rows.map((row,ri)=>{
-    const tiles=row.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-    return `<div class="snake-row${ri%2?' rev':''}">${tiles}</div>`;
-  }).join('');
+  const tiles=bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
+  chain.innerHTML=`<div class="board-line">${tiles}</div>`;
   chain.style.transform='';
   requestAnimationFrame(()=>requestAnimationFrame(()=>fitChain(chainId,scrollId)));
 }

@@ -537,6 +537,10 @@ const ALL_TILES=[];
 for(let a=0;a<=6;a++)for(let b=a;b<=6;b++)ALL_TILES.push([a,b]);
 const DOTS={0:[],1:[[1,1]],2:[[0,2],[2,0]],3:[[0,2],[1,1],[2,0]],4:[[0,0],[0,2],[2,0],[2,2]],5:[[0,0],[0,2],[1,1],[2,0],[2,2]],6:[[0,0],[1,0],[2,0],[0,2],[1,2],[2,2]]};
 const $=id=>document.getElementById(id);
+// Escape untrusted text (player names, etc.) before putting it into innerHTML.
+function esc(s){return (''+(s==null?'':s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+// Accept an avatar only if it's a bounded data:image URL — blocks CSS/HTML injection via the avatar field.
+function cleanAvatar(s){return (typeof s==='string'&&s.length<=200000&&/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s))?s:''}
 function shuffle(arr){const r=[...arr];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]]}return r}
 function pipSum(hand){return hand.reduce((s,[a,b])=>s+a+b,0)}
 function tileFits([a,b],end){return a===end||b===end}
@@ -591,10 +595,10 @@ function renderReveal(heading,groups){
   let k=0;
   const body=shown.map(g=>{
     const tiles=g.tiles.map(([a,b])=>buildMiniTile(a,b,k++)).join('');
-    const lbl=g.label?`<div class="ov-reveal-grp-lbl">${g.label} · ${pipSum(g.tiles)} pip${pipSum(g.tiles)!==1?'s':''}</div>`:'';
+    const lbl=g.label?`<div class="ov-reveal-grp-lbl">${esc(g.label)} · ${pipSum(g.tiles)} pip${pipSum(g.tiles)!==1?'s':''}</div>`:'';
     return `<div class="ov-reveal-grp">${lbl}<div class="ov-reveal-tiles">${tiles}</div></div>`;
   }).join('');
-  rev.innerHTML=`<div class="ov-reveal-h">${heading}</div>${body}`;
+  rev.innerHTML=`<div class="ov-reveal-h">${esc(heading)}</div>${body}`;
   rev.classList.add('on');
 }
 // ═══ SHARED: BOARD LAYOUT (single straight line — scales to fit the screen) ═══
@@ -740,11 +744,11 @@ function renderScoreboard(){
     head=`<tr><th>#</th><th>Winner</th><th>+Pts</th><th>A</th><th>B</th></tr>`;
     rows=history2.length?history2.map(h=>`<tr><td>${h.round}</td><td>${h.winTeam==='D'?'Draw':'Team '+h.winTeam}</td><td>${h.pts||0}</td><td>${h.A}</td><td>${h.B}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
   }else{
-    const oppN=(typeof OPP1_NAME!=='undefined'&&OPP1_NAME)?OPP1_NAME:'AI';
+    const oppN=esc((typeof OPP1_NAME!=='undefined'&&OPP1_NAME)?OPP1_NAME:'AI');
     totals=`<div class="sb-tot"><span class="sb-tot-v">${scores.p}</span><span class="sb-tot-l">You</span></div><div class="sb-tot"><span class="sb-tot-v" style="color:#ffcf5a">${scores.a}</span><span class="sb-tot-l">${oppN}</span></div>`;
     bars=sbBar('You',scores.p,target,'var(--gold)')+sbBar(oppN,scores.a,target,'#ffcf5a');
     head=`<tr><th>#</th><th>Winner</th><th>+Pts</th><th>You</th><th>${oppN}</th></tr>`;
-    rows=history1.length?history1.map(h=>`<tr><td>${h.round}</td><td>${h.winner}</td><td>${h.pts||0}</td><td>${h.p}</td><td>${h.a}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
+    rows=history1.length?history1.map(h=>`<tr><td>${h.round}</td><td>${esc(h.winner)}</td><td>${h.pts||0}</td><td>${h.p}</td><td>${h.a}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
   }
   $('sb-totals').innerHTML=totals;$('sb-bars').innerHTML=bars;$('sb-head').innerHTML=head;$('sb-rows').innerHTML=rows;
 }
@@ -1019,7 +1023,7 @@ function sendHost(msg){const c=NET.conns[0];if(c&&c.open)c.send(msg)}
 function onFromClient(seat,data){
   switch(data.type){
     case 'join':
-      NET.players[seat]=data.name;NET.avatars[seat]=data.avatar||'';
+      NET.players[seat]=(''+(data.name||'')).slice(0,24);NET.avatars[seat]=cleanAvatar(data.avatar);
       NET.conns[seat].send({type:'welcome',seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap});
       broadcastAll({type:'players',players:NET.players,avatars:NET.avatars,count:NET.count});
       updateWR();if(NET.count>=NET.cap)$('wr-start-btn').classList.add('show');break;
@@ -1036,8 +1040,8 @@ function onFromClient(seat,data){
 }
 function onFromHost(data){
   switch(data.type){
-    case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.avatars)NET.avatars=data.avatars;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
-    case 'players':NET.players=data.players;if(data.avatars)NET.avatars=data.avatars;NET.count=data.count;updateWR();break;
+    case 'welcome':NET.seat=data.seat;if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
+    case 'players':if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);NET.count=data.count;updateWR();break;
     case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
     case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
@@ -1070,7 +1074,7 @@ function updateWR(){
     const teamHtml=cap===4?`<div class="wr-tag ${SEAT_TEAMS[i]}">Team ${SEAT_TEAMS[i]}</div>`:'';
     const av=(NET.avatars&&(NET.avatars[i]||(i===my?profileAvatar():'')))||'';
     const mark=av?`<div class="wr-av" style="background-image:url('${av}')"></div>`:`<div class="wr-dot${filled?' on':''}"></div>`;
-    html+=`<div class="wr-slot">${mark}<div class="wr-sname${filled?' on':''}">${label}</div>${teamHtml}</div>`;
+    html+=`<div class="wr-slot">${mark}<div class="wr-sname${filled?' on':''}">${esc(label)}</div>${teamHtml}</div>`;
   }
   $('wr-slots').innerHTML=html;
   const cnt=NET.count;
@@ -1378,7 +1382,7 @@ function showOv2v2(rd){
   animateCount('ov-s1',rd.scores[myTeam]);animateCount('ov-s2',rd.scores[oppTeam]);
   Sfx.play(draw?'draw_game':won?'win':'lose');
   const nb=$('ov-nx');
-  if(rd.matchWinner){nb.textContent='🔄 New Match';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{$('ov').classList.remove('on');if(NET.role==='host'){G2H.scores={A:0,B:0};hostDeal()}else g2ShowStat('Waiting for host to start…','cyan')}}
+  if(rd.matchWinner){nb.textContent='🔄 New Match';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{$('ov').classList.remove('on');if(NET.role==='host'){G2H.scores={A:0,B:0};G2H.round=0;hostDeal()}else g2ShowStat('Waiting for host to start…','cyan')}}
   else if(NET.role==='host'){nb.textContent='Next Round ▶';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{$('ov').classList.remove('on');hostDeal()}}
   else{nb.textContent='⏳ Waiting for host…';nb.style.opacity='.45';nb.style.cursor='default';nb.onclick=null}
   const lOpp=(my+3)%4,rOpp=(my+1)%4,hands=rd.hands||[];

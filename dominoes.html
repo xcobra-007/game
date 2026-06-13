@@ -129,7 +129,7 @@ body{
 .board-outer{flex:1;display:flex;overflow:hidden;min-height:0}
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:8px 16px}
-.board-chain{display:flex;align-items:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .25s ease}
+.board-chain{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:7px 4px;flex-shrink:0;transform-origin:center center;transition:transform .25s ease}
 .board-ph{color:rgba(255,255,255,.32);font-size:.9rem;font-weight:700;pointer-events:none;text-align:center;text-transform:uppercase;letter-spacing:.06em}
 .board-area.dh-left::before{content:'';position:absolute;inset:0;right:50%;z-index:4;pointer-events:none;background:linear-gradient(to right,rgba(0,245,212,.22),transparent)}
 .board-area.dh-right::after{content:'';position:absolute;inset:0;left:50%;z-index:4;pointer-events:none;background:linear-gradient(to left,rgba(255,230,0,.22),transparent)}
@@ -536,10 +536,20 @@ function scaleBoardEl(chainId,scrollId){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
   chain.style.transform='';
+  chain.style.width='';
   requestAnimationFrame(()=>{
-    const avail=scroll.clientWidth-16,natural=chain.scrollWidth;
-    if(avail>0&&natural>avail){chain.style.transform=`scale(${Math.max(avail/natural,0.2)})`;chain.style.transformOrigin='center center'}
-    else chain.style.transform='';
+    const availW=scroll.clientWidth-32,availH=scroll.clientHeight-16;
+    if(availW<=0||availH<=0)return;
+    // Constrain the chain to the available width so the domino run wraps onto
+    // multiple rows (using the full board height) instead of being crushed
+    // into a single unreadable line.
+    chain.style.width=availW+'px';
+    const naturalH=chain.scrollHeight; // forces reflow → measures wrapped height
+    // Only scale down if the wrapped chain is still taller than the board,
+    // and never below a readable floor so tiles stay recognizable.
+    const scale=naturalH>availH?Math.max(availH/naturalH,0.45):1;
+    chain.style.transform=scale<1?`scale(${scale})`:'';
+    chain.style.transformOrigin='center center';
   });
 }
 // ═══ SHARED: TOAST & CONFETTI ═══
@@ -770,7 +780,7 @@ function r1Top(){
 // ═══ 1v1 RENDER HELPERS ═══
 function r1Board(){
   const chain=$('b-chain');
-  if(!G.bd.length){chain.innerHTML='<div class="board-ph" id="b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';r1Board._n=0;return}
+  if(!G.bd.length){chain.innerHTML='<div class="board-ph" id="b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';chain.style.width='';r1Board._n=0;return}
   if(G.bd.length>(r1Board._n||0))Sfx.play('place');r1Board._n=G.bd.length;
   chain.innerHTML=G.bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
   requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('b-chain','b-scroll')));
@@ -1043,7 +1053,7 @@ function g2RenderTop(){
 // ═══ 2v2 RENDER HELPERS ═══
 function g2RenderBoard(){
   const chain=$('g2-b-chain');
-  if(!G2C.board||!G2C.board.length){chain.innerHTML='<div class="board-ph" id="g2-b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';g2RenderBoard._n=0;return}
+  if(!G2C.board||!G2C.board.length){chain.innerHTML='<div class="board-ph" id="g2-b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';chain.style.width='';g2RenderBoard._n=0;return}
   if(G2C.board.length>(g2RenderBoard._n||0))Sfx.play('place');g2RenderBoard._n=G2C.board.length;
   chain.innerHTML=G2C.board.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
   requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('g2-b-chain','g2-b-scroll')));

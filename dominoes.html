@@ -416,6 +416,18 @@ body{
   <button class="fab" id="sb-btn" title="Scoreboard" onclick="openScoreboard()">📊</button>
 </div>
 
+<!-- ═══ QUICK CHAT ═══ -->
+<div class="chat-bar" id="chat-bar">
+  <div class="chat-menu" id="chat-menu">
+    <button class="chat-opt" onclick="quickChat(0)">امك انيجها</button>
+    <button class="chat-opt" onclick="quickChat(1)">اكعددددددد</button>
+    <button class="chat-opt" onclick="quickChat(2)">شباب دكيتة</button>
+    <button class="chat-opt" onclick="quickChat(3)">اكللك عمك شكد واستفاق من البنج</button>
+    <button class="chat-opt" onclick="quickChat(4)">ابو الدوشيش ابنكحبة</button>
+  </div>
+  <button class="fab" id="chat-btn" title="Quick chat" onclick="toggleChatMenu(event)">💬</button>
+</div>
+
 <!-- ═══ SCOREBOARD ═══ -->
 <div class="overlay" id="sb">
   <div class="ov-card sb-card">
@@ -433,6 +445,14 @@ body{
 .fab{width:42px;height:42px;border-radius:50%;border:3px solid var(--c3);background:rgba(45,27,78,.85);color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;box-shadow:0 0 14px rgba(255,230,0,.4)}
 .fab:hover{transform:scale(1.12) rotate(-6deg);box-shadow:0 0 22px rgba(255,230,0,.7)}
 .fab:active{transform:scale(.9)}
+/* ── QUICK CHAT (bottom-left) ── */
+.chat-bar{position:fixed;bottom:10px;left:10px;display:none;flex-direction:column;align-items:flex-start;gap:8px;z-index:151}
+.chat-menu{display:none;flex-direction:column;gap:6px;background:rgba(45,27,78,.94);border:3px solid var(--c2);border-radius:16px;padding:8px;box-shadow:0 0 22px rgba(0,245,212,.45);max-width:min(80vw,300px)}
+.chat-menu.on{display:flex;animation:slideUp .2s ease}
+.chat-opt{padding:9px 14px;border-radius:10px;border:2px solid var(--c5);background:rgba(13,13,26,.5);color:#fff;font-family:var(--font-body);font-weight:700;font-size:.95rem;cursor:pointer;text-align:right;direction:rtl;transition:transform .12s,background .15s,border-color .15s}
+.chat-opt:hover{background:var(--c5);border-color:var(--c2);transform:translateX(3px)}
+.chat-opt:active{transform:scale(.97)}
+.chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.2rem;padding:8px 16px;border:4px solid var(--c2);border-radius:14px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:72vw;text-align:center;box-shadow:0 0 22px rgba(0,245,212,.5)}
 /* ── SCORE BUMP + TURN FLASH + TILE/DEAL ANIMS ── */
 .bump{animation:bump .55s ease}
 @keyframes bump{0%{transform:scale(1)}28%{transform:scale(1.45)}100%{transform:scale(1)}}
@@ -498,7 +518,11 @@ function anyValid(hand,L,R){return hand.some(t=>tileValid(t,L,R))}
 
 // ═══ SCREEN MANAGER ═══
 const SCREENS=['screen-menu','screen-lobby','screen-waiting','screen-1v1','screen-2v2'];
-function showScreen(id){SCREENS.forEach(s=>$(s).style.display=s===id?'flex':'none')}
+function showScreen(id){
+  SCREENS.forEach(s=>$(s).style.display=s===id?'flex':'none');
+  const cb=$('chat-bar');if(cb)cb.style.display=(id==='screen-1v1'||id==='screen-2v2')?'flex':'none';
+  if(typeof closeChatMenu==='function')closeChatMenu();
+}
 function goMenu(){netDestroy();$('ov').classList.remove('on');showScreen('screen-menu')}
 let ONLINE_MODE='2v2';
 function goLobby(mode){
@@ -974,12 +998,18 @@ function onFromClient(seat,data){
       hostApplyMove(seat,data);break;
     case 'play1': // 1v1 online: client (seat 1) plays a tile (guards live in hostApply1)
       hostApply1(data.tile,data.side);break;
+    case 'chat':{ // a client sent a quick-chat phrase — show it and relay to everyone else
+      const txt=(''+(data.text||'')).slice(0,80);
+      flashChat(chatAnchorFor(seat),txt);
+      broadcastAll({type:'chat',seat,text:txt});
+      break;}
   }
 }
 function onFromHost(data){
   switch(data.type){
     case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
     case 'players':NET.players=data.players;NET.count=data.count;updateWR();break;
+    case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
     case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
     case 'deal':G2C.myTiles=[...data.tiles];G2C.scores={...data.scores};G2C.round=data.round;if(data.scores&&data.scores.A===0&&data.scores.B===0)history2=[];_deal2=true;break;
@@ -1465,6 +1495,50 @@ window.addEventListener('resize',()=>{
 });
 document.addEventListener('pointerdown',()=>Sfx.resume(),{once:true});
 syncSoundBtn();
+</script>
+
+<script>
+// ═══ QUICK CHAT ═══
+const CHAT_MSGS=['امك انيجها','اكعددددددد','شباب دكيتة','اكللك عمك شكد واستفاق من البنج','ابو الدوشيش ابنكحبة'];
+function toggleChatMenu(e){if(e&&e.stopPropagation)e.stopPropagation();const m=$('chat-menu');if(m)m.classList.toggle('on')}
+function closeChatMenu(){const m=$('chat-menu');if(m)m.classList.remove('on')}
+// Pick the on-screen avatar to anchor a chat stamp to, given the sender's seat,
+// from the current viewer's perspective.
+function chatAnchorFor(seat){
+  if(MODE==='2v2'){
+    const my=(typeof NET!=='undefined'&&NET.seat>=0)?NET.seat:0;
+    if(seat===my)return 'g2-bot-av';
+    if(seat===(my+2)%4)return 'g2-top-av';
+    if(seat===(my+1)%4)return 'g2-right-av';
+    if(seat===(my+3)%4)return 'g2-left-av';
+    return 'g2-bot-av';
+  }
+  // 1v1 (vs-AI or online): your own messages over the bottom avatar, the other over the top
+  if(typeof NET==='undefined'||NET.seat<0)return 'av-p';
+  return seat===NET.seat?'av-p':'av-ai';
+}
+// Show a chat phrase as a PASS-style stamp over an avatar (textContent = no injection).
+function flashChat(anchorId,text){
+  const a=$(anchorId);if(!a)return;
+  const r=a.getBoundingClientRect();
+  if(r.width===0&&r.height===0)return; // anchor not visible
+  const el=document.createElement('div');el.className='chat-stamp';el.textContent=text;
+  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1900);
+}
+function quickChat(i){
+  const text=CHAT_MSGS[i];if(text==null)return;
+  closeChatMenu();
+  // only meaningful on a game screen
+  if($('screen-1v1').style.display==='none'&&$('screen-2v2').style.display==='none')return;
+  const mySeat=(typeof NET!=='undefined'&&NET.seat>=0)?NET.seat:0;
+  flashChat(chatAnchorFor(mySeat),text);
+  Sfx.play('select');
+  if(typeof NET!=='undefined'&&NET.role==='host')broadcastAll({type:'chat',seat:0,text});
+  else if(typeof NET!=='undefined'&&NET.role==='client')sendHost({type:'chat',text});
+}
+// close the menu when clicking anywhere outside the chat bar
+document.addEventListener('click',e=>{const bar=$('chat-bar');if(bar&&!bar.contains(e.target))closeChatMenu()});
 </script>
 </body>
 </html>

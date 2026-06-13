@@ -153,7 +153,7 @@ body{
 <style>
 /* ── HAND ── */
 .hand-wrap{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px 4px;flex-shrink:0;min-height:60px;align-items:flex-end}
-.hand-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;user-select:none;-webkit-user-select:none;cursor:grab;transition:margin-left .2s ease,margin-right .2s ease}
+.hand-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;user-select:none;-webkit-user-select:none;cursor:grab}
 .hand-item:active{cursor:grabbing}
 .pip-lbl{font-size:.66rem;font-weight:800;color:#0D0D1A;background:var(--c3);border-radius:9999px;padding:1px 7px;min-width:22px;text-align:center;font-family:var(--font-head)}
 .ai-hand-wrap{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;padding:2px 12px;flex-shrink:0;min-height:28px}
@@ -461,10 +461,8 @@ body{
 .hand-item.deal{animation:dealIn .42s cubic-bezier(.34,1.56,.64,1) backwards}
 .hand-item.drag-src{opacity:.32;filter:grayscale(.4)}
 .hand-item.ins-left::before,.hand-item.ins-right::after{content:'';position:absolute;top:2px;bottom:18px;width:4px;border-radius:3px;background:var(--c3);box-shadow:0 0 12px var(--c3);z-index:6}
-.hand-item.ins-left{margin-left:64px}
-.hand-item.ins-right{margin-right:64px}
-.hand-item.ins-left::before{left:-34px}
-.hand-item.ins-right::after{right:-34px}
+.hand-item.ins-left::before{left:-6px}
+.hand-item.ins-right::after{right:-6px}
 @keyframes dealIn{0%{opacity:0;transform:translateY(46px) scale(.55) rotate(-10deg)}100%{opacity:1;transform:none}}
 /* ── SCOREBOARD PANEL ── */
 .sb-card{max-width:460px;width:94%}
@@ -1486,9 +1484,9 @@ function animateHandReorder(handId,doRender){
     it.style.transform=`translate(${dx}px,${dy}px)`;
     it.style.transition='none';
     void it.offsetWidth; // flush so the start transform applies before we animate
-    it.style.transition='transform .3s cubic-bezier(.34,1.45,.64,1)';
+    it.style.transition='transform .22s ease-out';
     it.style.transform='';
-    setTimeout(()=>{it.style.transition='';it.style.transform=''},340);
+    setTimeout(()=>{it.style.transition='';it.style.transform=''},240);
   });
 }
 const P1=makePlacement({

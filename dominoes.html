@@ -657,6 +657,12 @@ function confetti(){
 const Sfx=(function(){
   let ctx=null,muted=false;try{muted=(localStorage.getItem('dom_muted')==='1')}catch(e){}
   function ac(){if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){ctx=null}}return ctx}
+  // ── Real recorded domino tile click (trimmed from a CC0/royalty-free recording, embedded as mp3) ──
+  const PLACE_CLICK_B64="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0KFAIibSso9IqVWlLsyTRB9E/lHzZqLMEMbzFY/ags1iYwqDQVUWDWEqA6xYx9UU7QmiofyyLP9dCAAAABWhtiquYgqo669wAmdRwODW4UDj0hqphIBCG/QJFGHVcLJU3CJHWrxVgAQNgeZOkJJCMwT9Vhglo8GMYZAl2f/7csQhgQ7MmSMsvTDBxZNjCYSOyNTBGBYVEsIQHiYi6iKMVWX+tpOH3bZc3gVMDjyURgo9aSw8Kuqh3ceTj+Me2//+NFNH/SAINLxsxh1i+LNAAtHEQtIFhIU8HeJlgqM0gGbKnkvwdEhsypXTRWAKbPQyZu0Wcous0OGaB1TQJAOJA0ITJQl/ZTzxj+AwHJq1XpHhbDEUJGxEHSQ8TDmrCR0O3GXZXeS2H65FNbZ3MkUet91pFXs+VQIBUrcF0S8kQ9Y7kIGOQgeKJJ0dxATHXms6lRKPyxE2MPRbjla1DNpRvqrP+OgC1WY7IFJeLX5TKEBvMFQww6JTMtKfdwigyHQEkNmQYCzYXWwq8mQn/UBTXJuZ+9osWfrY5BKIBDiYElbhTAyEysrJD8Gp4WgKgNMQEg2BsWur//twxEACDGTBGsekbwGQi2GMxhjhTcOIzNJdqNcoK3zJsikroSWEmTFYvguV//IKVxBYX7mOKzBXWAkT/nc/+mguXu///+uy6cK87jbum//+b/9BWnu8GyCgpsKVPgf9TEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7csRuA8BYAgAOAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+  let placeBuf=null,placeTried=false;
+  function b64ToBuf(b64){const bin=atob(b64),len=bin.length,u8=new Uint8Array(len);for(let i=0;i<len;i++)u8[i]=bin.charCodeAt(i);return u8.buffer}
+  function loadPlace(){const c=ac();if(!c||placeTried)return;placeTried=true;try{c.decodeAudioData(b64ToBuf(PLACE_CLICK_B64),b=>{placeBuf=b},()=>{})}catch(e){}}
+  function playPlace(vol){const c=ac();if(!c)return;if(!placeBuf){loadPlace();return}const src=c.createBufferSource();src.buffer=placeBuf;const g=c.createGain();g.gain.value=(vol||0.9);src.connect(g).connect(c.destination);src.start()}
   function tone(freq,dur,type,vol,when,glideTo){
     const c=ac();if(!c)return;const t0=c.currentTime+(when||0);
     const osc=c.createOscillator(),g=c.createGain();
@@ -702,8 +708,8 @@ const Sfx=(function(){
     src.connect(bp).connect(g).connect(c.destination);src.start(t0);
   }
   const lib={
-    // minimal: one quiet, short wooden tick
-    place:()=>woodKnock({vol:0.2,bright:2300,ring:0.04}),
+    // real recorded domino tile click
+    place:()=>playPlace(0.9),
     // slide a tile out of the boneyard, then a light tap as it lands
     draw:()=>{woodSlide(0.16);woodKnock({vol:0.3,bright:2000,when:0.11})},
     // knocking on the table — exactly how real players pass: a dull double knuckle-knock
@@ -720,8 +726,8 @@ const Sfx=(function(){
     draw_game:()=>{woodKnock({vol:0.4,bright:1400,pitch:0.85});woodKnock({vol:0.4,bright:1400,pitch:0.85,when:0.22})}
   };
   return {
-    play(name){if(muted)return;try{const c=ac();if(c&&c.state==='suspended')c.resume();(lib[name]||function(){})()}catch(e){}},
-    resume(){try{const c=ac();if(c&&c.state==='suspended')c.resume()}catch(e){}},
+    play(name){if(muted)return;try{const c=ac();if(c&&c.state==='suspended')c.resume();loadPlace();(lib[name]||function(){})()}catch(e){}},
+    resume(){try{const c=ac();if(c&&c.state==='suspended')c.resume();loadPlace()}catch(e){}},
     toggle(){muted=!muted;try{localStorage.setItem('dom_muted',muted?'1':'0')}catch(e){}return muted},
     isMuted(){return muted}
   };

@@ -128,8 +128,11 @@ body{
 /* ── BOARD ── */
 .board-outer{flex:1;display:flex;overflow:hidden;min-height:0}
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:8px 16px}
-.board-chain{display:flex;align-items:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .25s ease}
+.board-scroll{width:100%;height:100%;overflow-x:auto;overflow-y:hidden;display:flex;align-items:center;padding:8px 16px;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,58,242,.55) transparent}
+.board-scroll::-webkit-scrollbar{height:7px}
+.board-scroll::-webkit-scrollbar-thumb{background:rgba(255,58,242,.55);border-radius:9999px}
+.board-scroll::-webkit-scrollbar-track{background:transparent}
+.board-chain{display:flex;align-items:center;gap:4px;flex-shrink:0;margin:auto;transform-origin:center center;transition:transform .15s ease}
 .board-ph{color:rgba(255,255,255,.32);font-size:.9rem;font-weight:700;pointer-events:none;text-align:center;text-transform:uppercase;letter-spacing:.06em}
 .board-area.dh-left::before{content:'';position:absolute;inset:0;right:50%;z-index:4;pointer-events:none;background:linear-gradient(to right,rgba(0,245,212,.22),transparent)}
 .board-area.dh-right::after{content:'';position:absolute;inset:0;left:50%;z-index:4;pointer-events:none;background:linear-gradient(to left,rgba(255,230,0,.22),transparent)}
@@ -532,14 +535,26 @@ function renderReveal(heading,groups){
   rev.classList.add('on');
 }
 // ═══ SHARED: BOARD AUTO-SCALE ═══
-function scaleBoardEl(chainId,scrollId){
+function scaleBoardEl(chainId,scrollId,side){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
   chain.style.transform='';
   requestAnimationFrame(()=>{
-    const avail=scroll.clientWidth-16,natural=chain.scrollWidth;
-    if(avail>0&&natural>avail){chain.style.transform=`scale(${Math.max(avail/natural,0.2)})`;chain.style.transformOrigin='center center'}
-    else chain.style.transform='';
+    // Keep tiles full-size and on a single line. Only shrink (via zoom, which
+    // also keeps horizontal scrolling correct) if the board is too SHORT to
+    // fit a tile's height — never to cram a long run into the width.
+    const availH=scroll.clientHeight-12;
+    let z=1;
+    if(availH>0){const naturalH=chain.scrollHeight;if(naturalH>availH)z=Math.max(availH/naturalH,0.5)}
+    chain.style.zoom=z===1?'':z;
+    // Long runs scroll horizontally; auto-follow the end that just changed so
+    // the newest tile is always visible. (side===null => leave scroll as-is)
+    if(side){
+      requestAnimationFrame(()=>{
+        const max=scroll.scrollWidth-scroll.clientWidth;
+        if(max>0)scroll.scrollLeft=side==='left'?0:max;
+      });
+    }
   });
 }
 // ═══ SHARED: TOAST & CONFETTI ═══
@@ -669,9 +684,9 @@ function start1v1Round(){
 function next1v1Round(){$('ov').classList.remove('on');start1v1Round()}
 function place1v1(tile,side){
   const[a,b]=tile,dbl=a===b;let obj;
-  if(G.L===-1){obj={left:a,right:b,dbl};G.L=a;G.R=b;G.bd.push(obj)}
-  else if(side==='left'){const m=G.L,o=a===m?b:a;obj={left:o,right:m,dbl};G.L=o;G.bd.unshift(obj)}
-  else{const m=G.R,o=a===m?b:a;obj={left:m,right:o,dbl};G.R=o;G.bd.push(obj)}
+  if(G.L===-1){obj={left:a,right:b,dbl};G.L=a;G.R=b;G.bd.push(obj);G._lastSide='right'}
+  else if(side==='left'){const m=G.L,o=a===m?b:a;obj={left:o,right:m,dbl};G.L=o;G.bd.unshift(obj);G._lastSide='left'}
+  else{const m=G.R,o=a===m?b:a;obj={left:m,right:o,dbl};G.R=o;G.bd.push(obj);G._lastSide='right'}
   obj.fresh=true;setTimeout(()=>{if(obj)obj.fresh=false;r1Board()},400);
 }
 function playTile1v1(idx,side){
@@ -770,10 +785,12 @@ function r1Top(){
 // ═══ 1v1 RENDER HELPERS ═══
 function r1Board(){
   const chain=$('b-chain');
-  if(!G.bd.length){chain.innerHTML='<div class="board-ph" id="b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';r1Board._n=0;return}
-  if(G.bd.length>(r1Board._n||0))Sfx.play('place');r1Board._n=G.bd.length;
+  if(!G.bd.length){chain.innerHTML='<div class="board-ph" id="b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';chain.style.zoom='';r1Board._n=0;return}
+  const grew=G.bd.length>(r1Board._n||0);
+  if(grew)Sfx.play('place');r1Board._n=G.bd.length;
   chain.innerHTML=G.bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('b-chain','b-scroll')));
+  const side=grew?(G._lastSide||'right'):null;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('b-chain','b-scroll',side)));
 }
 function r1Hands(){
   const myTurn=G.turn==='p'&&!G.aiOn&&G.phase==='play';
@@ -1043,10 +1060,19 @@ function g2RenderTop(){
 // ═══ 2v2 RENDER HELPERS ═══
 function g2RenderBoard(){
   const chain=$('g2-b-chain');
-  if(!G2C.board||!G2C.board.length){chain.innerHTML='<div class="board-ph" id="g2-b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';g2RenderBoard._n=0;return}
-  if(G2C.board.length>(g2RenderBoard._n||0))Sfx.play('place');g2RenderBoard._n=G2C.board.length;
+  if(!G2C.board||!G2C.board.length){chain.innerHTML='<div class="board-ph" id="g2-b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';chain.style.zoom='';g2RenderBoard._n=0;g2RenderBoard._pf=null;return}
+  const grew=G2C.board.length>(g2RenderBoard._n||0);
+  let side=null;
+  if(grew){
+    // If the first tile changed, the new tile was added to the LEFT end.
+    const pf=g2RenderBoard._pf,b0=G2C.board[0];
+    side=(pf&&b0&&(b0.left!==pf.left||b0.right!==pf.right))?'left':'right';
+    Sfx.play('place');
+  }
+  g2RenderBoard._n=G2C.board.length;
+  g2RenderBoard._pf=G2C.board[0]?{left:G2C.board[0].left,right:G2C.board[0].right}:null;
   chain.innerHTML=G2C.board.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('g2-b-chain','g2-b-scroll')));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('g2-b-chain','g2-b-scroll',side)));
 }
 function g2RenderHand(){
   const myTurn=G2C.turn===NET.seat&&G2C.phase==='play';

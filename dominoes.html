@@ -153,7 +153,7 @@ body{
 <style>
 /* ── HAND ── */
 .hand-wrap{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px 4px;flex-shrink:0;min-height:60px;align-items:flex-end}
-.hand-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;user-select:none;-webkit-user-select:none;cursor:grab}
+.hand-item{display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;user-select:none;-webkit-user-select:none;cursor:grab;transition:margin-left .2s ease,margin-right .2s ease}
 .hand-item:active{cursor:grabbing}
 .pip-lbl{font-size:.66rem;font-weight:800;color:#0D0D1A;background:var(--c3);border-radius:9999px;padding:1px 7px;min-width:22px;text-align:center;font-family:var(--font-head)}
 .ai-hand-wrap{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;padding:2px 12px;flex-shrink:0;min-height:28px}
@@ -461,8 +461,10 @@ body{
 .hand-item.deal{animation:dealIn .42s cubic-bezier(.34,1.56,.64,1) backwards}
 .hand-item.drag-src{opacity:.32;filter:grayscale(.4)}
 .hand-item.ins-left::before,.hand-item.ins-right::after{content:'';position:absolute;top:2px;bottom:18px;width:4px;border-radius:3px;background:var(--c3);box-shadow:0 0 12px var(--c3);z-index:6}
-.hand-item.ins-left::before{left:-6px}
-.hand-item.ins-right::after{right:-6px}
+.hand-item.ins-left{margin-left:64px}
+.hand-item.ins-right{margin-right:64px}
+.hand-item.ins-left::before{left:-34px}
+.hand-item.ins-right::after{right:-34px}
 @keyframes dealIn{0%{opacity:0;transform:translateY(46px) scale(.55) rotate(-10deg)}100%{opacity:1;transform:none}}
 /* ── SCOREBOARD PANEL ── */
 .sb-card{max-width:460px;width:94%}
@@ -911,7 +913,7 @@ function r1Hands(){
     }
     const itemCls=(_deal1?'hand-item deal':'hand-item')+(tile===G._justDrawn?' just-drawn':'');
     const itemStyle=_deal1?` style="animation-delay:${i*55}ms"`:'';
-    return `<div class="${itemCls}" data-i="${i}" draggable="true" ondragstart="P1.onDragStart(event,${i})" ondragend="P1.onDragEnd()" ondragover="P1.onHandOver(event,${i})" ondragleave="P1.onHandLeave(event)" ondrop="P1.onHandDrop(event,${i})" ontouchstart="P1.onTouchStart(event,${i})" ontouchmove="P1.onTouchMove(event)" ontouchend="P1.onTouchEnd(event)" onclick="P1.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
+    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="true" ondragstart="P1.onDragStart(event,${i})" ondragend="P1.onDragEnd()" ondragover="P1.onHandOver(event,${i})" ondragleave="P1.onHandLeave(event)" ondrop="P1.onHandDrop(event,${i})" ontouchstart="P1.onTouchStart(event,${i})" ontouchmove="P1.onTouchMove(event)" ontouchend="P1.onTouchEnd(event)" onclick="P1.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
   }).join('');
   _deal1=false;
 }
@@ -1323,7 +1325,7 @@ function g2RenderHand(){
     }
     const itemCls=_deal2?'hand-item deal':'hand-item';
     const itemStyle=_deal2?` style="animation-delay:${i*55}ms"`:'';
-    return `<div class="${itemCls}" data-i="${i}" draggable="true" ondragstart="P2.onDragStart(event,${i})" ondragend="P2.onDragEnd()" ondragover="P2.onHandOver(event,${i})" ondragleave="P2.onHandLeave(event)" ondrop="P2.onHandDrop(event,${i})" ontouchstart="P2.onTouchStart(event,${i})" ontouchmove="P2.onTouchMove(event)" ontouchend="P2.onTouchEnd(event)" onclick="P2.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
+    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="true" ondragstart="P2.onDragStart(event,${i})" ondragend="P2.onDragEnd()" ondragover="P2.onHandOver(event,${i})" ondragleave="P2.onHandLeave(event)" ondrop="P2.onHandDrop(event,${i})" ontouchstart="P2.onTouchStart(event,${i})" ontouchmove="P2.onTouchMove(event)" ontouchend="P2.onTouchEnd(event)" onclick="P2.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
   }).join('');
   _deal2=false;
 }
@@ -1467,6 +1469,28 @@ function makePlacement(ctx){
 
 <script>
 // ═══ PLACEMENT INSTANCES + WIRE-UP ═══
+// FLIP: smoothly slide hand tiles from their old positions to their new ones after
+// a reorder re-render. Tiles are matched by their value key (each domino is unique),
+// so the swap animates even though the hand DOM is rebuilt from scratch.
+function animateHandReorder(handId,doRender){
+  const wrap=$(handId);
+  if(!wrap||(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)){doRender();return}
+  const first=new Map();
+  wrap.querySelectorAll('.hand-item').forEach(it=>{const k=it.dataset.key;if(k)first.set(k,it.getBoundingClientRect())});
+  doRender();
+  wrap.querySelectorAll('.hand-item').forEach(it=>{
+    const f=first.get(it.dataset.key);if(!f)return;
+    const l=it.getBoundingClientRect();
+    const dx=f.left-l.left,dy=f.top-l.top;
+    if(!dx&&!dy)return;
+    it.style.transform=`translate(${dx}px,${dy}px)`;
+    it.style.transition='none';
+    void it.offsetWidth; // flush so the start transform applies before we animate
+    it.style.transition='transform .3s cubic-bezier(.34,1.45,.64,1)';
+    it.style.transform='';
+    setTimeout(()=>{it.style.transition='';it.style.transform=''},340);
+  });
+}
 const P1=makePlacement({
   boardAreaId:'board-area',handId:'p-hand',
   canPlay:()=>!!G&&G.turn==='p'&&G.phase==='play'&&!G.aiOn,
@@ -1476,7 +1500,7 @@ const P1=makePlacement({
   setSel:i=>{G.sel=i;Sfx.play('select');render1v1()},
   toggleSel:i=>{const was=G.sel;G.sel=(G.sel===i?null:i);if(G.sel!==null&&G.sel!==was)Sfx.play('select');render1v1()},
   playIdx:(idx,side)=>playTile1v1(idx,side),
-  reorder:(from,to)=>{const a=G.pH;if(!a||from<0||from>=a.length)return;const t=a.splice(from,1)[0];a.splice(Math.max(0,Math.min(to,a.length)),0,t);G.sel=null;Sfx.play('select');render1v1()}
+  reorder:(from,to)=>{const a=G.pH;if(!a||from<0||from>=a.length)return;animateHandReorder('p-hand',()=>{const t=a.splice(from,1)[0];a.splice(Math.max(0,Math.min(to,a.length)),0,t);G.sel=null;render1v1()});Sfx.play('select')}
 });
 const P2=makePlacement({
   boardAreaId:'g2-board-area',handId:'g2-hand',
@@ -1487,7 +1511,7 @@ const P2=makePlacement({
   setSel:i=>{G2C.sel=i;Sfx.play('select');G2Render()},
   toggleSel:i=>{const was=G2C.sel;G2C.sel=(G2C.sel===i?null:i);if(G2C.sel!==null&&G2C.sel!==was)Sfx.play('select');G2Render()},
   playIdx:(idx,side)=>g2PlayIdx(idx,side),
-  reorder:(from,to)=>{const a=G2C.myTiles;if(!a||from<0||from>=a.length)return;const t=a.splice(from,1)[0];a.splice(Math.max(0,Math.min(to,a.length)),0,t);G2C.sel=null;Sfx.play('select');G2Render()}
+  reorder:(from,to)=>{const a=G2C.myTiles;if(!a||from<0||from>=a.length)return;animateHandReorder('g2-hand',()=>{const t=a.splice(from,1)[0];a.splice(Math.max(0,Math.min(to,a.length)),0,t);G2C.sel=null;G2Render()});Sfx.play('select')}
 });
 window.addEventListener('resize',()=>{
   if(G&&G.bd&&G.bd.length)renderChain(G.bd,'b-chain','b-scroll');

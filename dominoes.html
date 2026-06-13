@@ -128,8 +128,17 @@ body{
 /* ── BOARD ── */
 .board-outer{flex:1;display:flex;overflow:hidden;min-height:0}
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:8px 16px}
-.board-chain{display:flex;align-items:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .25s ease}
+.board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px 12px}
+.board-chain{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .2s ease}
+.snake-row{display:flex;align-items:center;gap:4px}
+.snake-row.rev{flex-direction:row-reverse}
+/* PASS stamp + draw animations */
+.pass-stamp{position:fixed;transform:translate(-50%,-50%) rotate(-13deg);font-family:var(--font-head);font-weight:900;font-size:2rem;letter-spacing:.04em;padding:5px 16px;border:4px solid currentColor;border-radius:13px;background:rgba(13,13,26,.72);z-index:350;pointer-events:none;text-transform:uppercase;animation:stampPop 1.1s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.5)}
+@keyframes stampPop{0%{opacity:0;transform:translate(-50%,-50%) rotate(-13deg) scale(.3)}22%{opacity:1;transform:translate(-50%,-50%) rotate(-13deg) scale(1.18)}42%{transform:translate(-50%,-50%) rotate(-13deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-92%) rotate(-13deg) scale(1)}}
+.boneyard.drawing{animation:byPulse .5s ease}
+@keyframes byPulse{0%,100%{transform:scale(1);filter:none}42%{transform:scale(1.13);filter:brightness(1.45)}}
+.hand-item.just-drawn{animation:drawIn .6s cubic-bezier(.34,1.56,.64,1)}
+@keyframes drawIn{0%{opacity:0;transform:translateY(-58px) scale(.5) rotate(-12deg)}60%{opacity:1}100%{opacity:1;transform:none}}
 .board-ph{color:rgba(255,255,255,.32);font-size:.9rem;font-weight:700;pointer-events:none;text-align:center;text-transform:uppercase;letter-spacing:.06em}
 .board-area.dh-left::before{content:'';position:absolute;inset:0;right:50%;z-index:4;pointer-events:none;background:linear-gradient(to right,rgba(0,245,212,.22),transparent)}
 .board-area.dh-right::after{content:'';position:absolute;inset:0;left:50%;z-index:4;pointer-events:none;background:linear-gradient(to left,rgba(255,230,0,.22),transparent)}
@@ -246,16 +255,19 @@ body{
     <button class="mode-card ai" onclick="startMenu1v1()">
       <span class="mc-icon">🤖</span><span class="mc-label">1v1 vs AI</span><span class="mc-sub">Play solo vs computer</span>
     </button>
-    <button class="mode-card online" onclick="goLobby()">
-      <span class="mc-icon">👥</span><span class="mc-label">2v2 Online</span><span class="mc-sub">Play with friends</span>
+    <button class="mode-card online" onclick="goLobby('1v1')">
+      <span class="mc-icon">⚔️</span><span class="mc-label">1v1 Online</span><span class="mc-sub">Duel a friend</span>
+    </button>
+    <button class="mode-card online" onclick="goLobby('2v2')">
+      <span class="mc-icon">👥</span><span class="mc-label">2v2 Online</span><span class="mc-sub">Teams of two</span>
     </button>
   </div>
 </div>
 
 <!-- ═══ LOBBY ═══ -->
 <div id="screen-lobby" style="display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:32px 20px;max-width:420px;width:100%">
-  <div class="scr-title" style="font-size:1.9rem;font-weight:900;color:#fff">🎮 2v2 Online</div>
-  <div style="color:var(--txt-d);font-size:.85rem">2 teams of 2 · everyone on their own device</div>
+  <div class="scr-title" id="lb-mode-title" style="font-size:1.9rem;font-weight:900;color:#fff">🎮 2v2 Online</div>
+  <div style="color:var(--txt-d);font-size:.85rem" id="lb-mode-sub">2 teams of 2 · everyone on their own device</div>
   <div class="lb-card"><h3>Your Name</h3><input id="lb-name" class="lb-input" placeholder="Enter your name…" maxlength="16"></div>
   <div class="lb-card"><h3>🏠 Create a Room</h3><button class="lb-btn gold" onclick="createRoom()">Create Room</button></div>
   <div style="color:var(--txt-d);font-size:.8rem">— or —</div>
@@ -287,7 +299,7 @@ body{
   <!-- AI panel -->
   <div class="panel top">
     <div class="av" id="av-ai">🤖</div>
-    <div><div class="pname">AI Player</div><div class="ptiles" id="ai-cnt">7 tiles</div></div>
+    <div><div class="pname" id="ai-name">AI Player</div><div class="ptiles" id="ai-cnt">7 tiles</div></div>
     <div class="ai-hand-wrap" id="ai-hand"></div>
     <div class="sc-badge"><div class="sc-v" id="sc-ai">0</div><div class="sc-l">Score</div></div>
   </div>
@@ -313,16 +325,12 @@ body{
   <!-- Player panel -->
   <div class="panel bot">
     <div class="av" id="av-p">😎</div>
-    <div><div class="pname">You</div><div class="ptiles" id="p-cnt">7 tiles</div></div>
+    <div><div class="pname" id="p-name">You</div><div class="ptiles" id="p-cnt">7 tiles</div></div>
     <div class="sc-badge"><div class="sc-v" id="sc-p">0</div><div class="sc-l">Score</div></div>
   </div>
   <!-- Hand -->
   <div class="hand-wrap" id="p-hand"></div>
-  <!-- Controls -->
-  <div class="ctrl">
-    <button class="btn btn-draw" id="btn-draw" onclick="draw1v1()" disabled>📥 Draw</button>
-    <button class="btn btn-pass" id="btn-pass" onclick="pass1v1()" disabled>⏭ Pass</button>
-  </div>
+  <!-- Drawing & passing are automatic now — no buttons -->
 </div>
 
 
@@ -493,7 +501,15 @@ function anyValid(hand,L,R){return hand.some(t=>tileValid(t,L,R))}
 const SCREENS=['screen-menu','screen-lobby','screen-waiting','screen-1v1','screen-2v2'];
 function showScreen(id){SCREENS.forEach(s=>$(s).style.display=s===id?'flex':'none')}
 function goMenu(){netDestroy();$('ov').classList.remove('on');showScreen('screen-menu')}
-function goLobby(){netDestroy();showScreen('screen-lobby')}
+let ONLINE_MODE='2v2';
+function goLobby(mode){
+  if(mode)ONLINE_MODE=mode;
+  netDestroy();
+  const is1=ONLINE_MODE==='1v1',t=$('lb-mode-title'),s=$('lb-mode-sub');
+  if(t)t.textContent=is1?'⚔️ 1v1 Online':'🎮 2v2 Online';
+  if(s)s.textContent=is1?'Duel a friend · 2 players on their own devices':'2 teams of 2 · everyone on their own device';
+  showScreen('screen-lobby');
+}
 function startMenu1v1(){init1v1()}
 </script>
 
@@ -531,16 +547,48 @@ function renderReveal(heading,groups){
   rev.innerHTML=`<div class="ov-reveal-h">${heading}</div>${body}`;
   rev.classList.add('on');
 }
-// ═══ SHARED: BOARD AUTO-SCALE ═══
-function scaleBoardEl(chainId,scrollId){
+// ═══ SHARED: BOARD SNAKE LAYOUT (no scroll — winds to fit the screen) ═══
+// Packs the domino run into rows that fit the board width, alternating row
+// direction so it reads as one continuous winding snake, then scales the whole
+// block down only if needed so EVERYTHING is visible without scrolling.
+function renderChain(bd,chainId,scrollId){
+  const chain=$(chainId);if(!chain)return;
+  if(!bd||!bd.length){chain.innerHTML='<div class="board-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';return}
+  const scroll=$(scrollId);
+  const availW=Math.max((scroll?scroll.clientWidth:900)-24,140);
+  const gap=4;
+  const rows=[];let cur=[],curW=0;
+  for(const t of bd){
+    const w=(t.dbl?62:122)+gap;
+    if(cur.length&&curW+w>availW){rows.push(cur);cur=[];curW=0}
+    cur.push(t);curW+=w;
+  }
+  if(cur.length)rows.push(cur);
+  chain.innerHTML=rows.map((row,ri)=>{
+    const tiles=row.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
+    return `<div class="snake-row${ri%2?' rev':''}">${tiles}</div>`;
+  }).join('');
+  chain.style.transform='';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>fitChain(chainId,scrollId)));
+}
+function fitChain(chainId,scrollId){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
   chain.style.transform='';
-  requestAnimationFrame(()=>{
-    const avail=scroll.clientWidth-16,natural=chain.scrollWidth;
-    if(avail>0&&natural>avail){chain.style.transform=`scale(${Math.max(avail/natural,0.2)})`;chain.style.transformOrigin='center center'}
-    else chain.style.transform='';
-  });
+  const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
+  const natW=chain.scrollWidth,natH=chain.scrollHeight;
+  if(natW<=0||natH<=0||availW<=0||availH<=0)return;
+  const s=Math.min(availW/natW,availH/natH,1);
+  if(s<1){chain.style.transform=`scale(${s})`;chain.style.transformOrigin='center center'}
+}
+// Show a "PASS" (or other) stamp centered over an element (e.g. an avatar)
+function flashStamp(anchorId,text,color){
+  const a=$(anchorId);if(!a)return;
+  const r=a.getBoundingClientRect();
+  const el=document.createElement('div');el.className='pass-stamp';el.textContent=text;
+  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
+  if(color)el.style.color=color;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1150);
 }
 // ═══ SHARED: TOAST & CONFETTI ═══
 let _toastTimer=null;
@@ -643,9 +691,10 @@ function renderScoreboard(){
     head=`<tr><th>#</th><th>Winner</th><th>+Pts</th><th>A</th><th>B</th></tr>`;
     rows=history2.length?history2.map(h=>`<tr><td>${h.round}</td><td>${h.winTeam==='D'?'Draw':'Team '+h.winTeam}</td><td>${h.pts||0}</td><td>${h.A}</td><td>${h.B}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
   }else{
-    totals=`<div class="sb-tot"><span class="sb-tot-v">${scores.p}</span><span class="sb-tot-l">You</span></div><div class="sb-tot"><span class="sb-tot-v" style="color:#ffcf5a">${scores.a}</span><span class="sb-tot-l">AI</span></div>`;
-    bars=sbBar('You',scores.p,target,'var(--gold)')+sbBar('AI',scores.a,target,'#ffcf5a');
-    head=`<tr><th>#</th><th>Winner</th><th>+Pts</th><th>You</th><th>AI</th></tr>`;
+    const oppN=(typeof OPP1_NAME!=='undefined'&&OPP1_NAME)?OPP1_NAME:'AI';
+    totals=`<div class="sb-tot"><span class="sb-tot-v">${scores.p}</span><span class="sb-tot-l">You</span></div><div class="sb-tot"><span class="sb-tot-v" style="color:#ffcf5a">${scores.a}</span><span class="sb-tot-l">${oppN}</span></div>`;
+    bars=sbBar('You',scores.p,target,'var(--gold)')+sbBar(oppN,scores.a,target,'#ffcf5a');
+    head=`<tr><th>#</th><th>Winner</th><th>+Pts</th><th>You</th><th>${oppN}</th></tr>`;
     rows=history1.length?history1.map(h=>`<tr><td>${h.round}</td><td>${h.winner}</td><td>${h.pts||0}</td><td>${h.p}</td><td>${h.a}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
   }
   $('sb-totals').innerHTML=totals;$('sb-bars').innerHTML=bars;$('sb-head').innerHTML=head;$('sb-rows').innerHTML=rows;
@@ -654,17 +703,24 @@ function renderScoreboard(){
 
 
 <script>
-// ═══ 1v1 ENGINE ═══
-let scores={p:0,a:0},roundNo=0,G=null;
-function init1v1(){MODE='1v1';scores={p:0,a:0};roundNo=0;history1=[];$('ov').classList.remove('on');showScreen('screen-1v1');start1v1Round()}
+// ═══ 1v1 ENGINE (shared turn machine: vs-AI and online host) ═══
+// 'p' = me (this device), 'a' = opponent. G.mode: 'ai' | 'host' | 'client'.
+// Authoritative on 'ai' and 'host'. Client only renders + sends its plays.
+let scores={p:0,a:0},roundNo=0,G=null,OPP1_NAME='AI';
+function init1v1(){MODE='1v1';scores={p:0,a:0};roundNo=0;history1=[];OPP1_NAME='AI';setup1v1UI(false);$('ov').classList.remove('on');showScreen('screen-1v1');start1v1Round()}
+function setup1v1UI(online,oppName,myName){
+  $('av-ai').textContent=online?'👤':'🤖';
+  $('ai-name').textContent=online?(oppName||'Opponent'):'AI Player';
+  $('p-name').textContent=online?(myName||'You'):'You';
+}
 function start1v1Round(){
   roundNo++;
   const deck=shuffle(ALL_TILES);
-  G={pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:'p',sel:null,phase:'play',aiOn:false,passes:0};
+  G={mode:'ai',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
   let first='p';
   outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
-  G.turn=first;_deal1=true;render1v1();
-  if(G.turn==='a')kickAI1(1500);
+  _deal1=true;render1v1();
+  setTimeout(()=>beginTurn1(first),760);
 }
 function next1v1Round(){$('ov').classList.remove('on');start1v1Round()}
 function place1v1(tile,side){
@@ -674,38 +730,73 @@ function place1v1(tile,side){
   else{const m=G.R,o=a===m?b:a;obj={left:m,right:o,dbl};G.R=o;G.bd.push(obj)}
   obj.fresh=true;setTimeout(()=>{if(obj)obj.fresh=false;r1Board()},400);
 }
+// --- turn state machine ---
+function beginTurn1(who){
+  if(!G||G.phase!=='play')return;
+  G.turn=who;G.aiOn=(who==='a');G.sel=null;
+  if(G.mode==='host')hostBroadcast1();
+  resolveTurn1(who);
+}
+function resolveTurn1(who){
+  if(!G||G.phase!=='play'||G.turn!==who)return;
+  const hand=who==='p'?G.pH:G.aH;
+  if(anyValid(hand,G.L,G.R)){
+    render1v1();
+    if(who==='a'&&G.mode==='ai')setTimeout(aiPlay1,900);
+    // else: human ('p') waits for input, or remote opponent ('a' on host) waits for network
+    return;
+  }
+  if(G.by.length>0){autoDraw1(who,()=>resolveTurn1(who));return}
+  autoPass1(who);
+}
+function autoDraw1(who,cb){
+  if(!G||!G.by.length){cb&&cb();return}
+  const t=G.by.pop();
+  (who==='p'?G.pH:G.aH).push(t);
+  G.passes=0;Sfx.play('draw');
+  if(who==='p')G._justDrawn=t;
+  pulseBoneyard();
+  if(G.mode==='host'){if(who==='a')sendTo(1,{type:'draw1',tile:t});hostBroadcast1()}
+  render1v1();
+  setTimeout(()=>{G._justDrawn=null;cb&&cb()},760);
+}
+function autoPass1(who){
+  G.passes=(G.passes||0)+1;
+  Sfx.play('pass');
+  flashStamp(who==='p'?'av-p':'av-ai','PASS','var(--c4)');
+  if(G.mode==='host')broadcastAll({type:'pass1',who});
+  render1v1();
+  const blocked=G.passes>=2&&G.by.length===0;
+  setTimeout(()=>{
+    if(!G||G.phase!=='play')return;
+    if(blocked){endBlocked1();return}
+    beginTurn1(who==='p'?'a':'p');
+  },1050);
+}
+function pulseBoneyard(){const by=$('boneyard');if(by){by.classList.remove('drawing');void by.offsetWidth;by.classList.add('drawing')}}
+function aiPlay1(){
+  if(!G||G.phase!=='play'||G.turn!=='a'||G.mode!=='ai')return;
+  const valid=G.aH.filter(t=>tileValid(t,G.L,G.R));
+  if(!valid.length){resolveTurn1('a');return}
+  let best=valid[0];const sc=t=>t[0]+t[1]+(t[0]===t[1]?5:0);
+  for(const t of valid)if(sc(t)>sc(best))best=t;
+  let side='right';
+  if(G.L!==-1){const cL=tileFits(best,G.L),cR=tileFits(best,G.R);side=cL&&!cR?'left':cR&&!cL?'right':Math.random()<.5?'left':'right'}
+  place1v1(best,side);G.aH.splice(G.aH.indexOf(best),1);G.passes=0;
+  if(checkEnd1('a'))return;
+  beginTurn1('p');
+}
+// --- my move (local human). client → send to host; ai/host → apply now ---
 function playTile1v1(idx,side){
-  if(G.turn!=='p'||G.phase!=='play'||G.aiOn)return false;
+  if(!G||G.turn!=='p'||G.phase!=='play'||G.aiOn)return false;
   const tile=G.pH[idx];if(!tile)return false;
   if(G.L!==-1){const end=side==='left'?G.L:G.R;if(!tileFits(tile,end))return false}
+  if(G.mode==='client'){G.pH.splice(idx,1);G.sel=null;G.turn=null;sendHost({type:'play1',tile,side});render1v1();return true}
   place1v1(tile,side);G.pH.splice(idx,1);G.sel=null;G.passes=0;
+  if(G.mode==='host')hostBroadcast1();
   if(checkEnd1('p'))return true;
-  G.turn='a';render1v1();kickAI1(1300);return true;
-}
-function draw1v1(){if(G.turn!=='p'||G.by.length===0)return;const t=G.by.pop();G.pH.push(t);G.passes=0;Sfx.play('draw');toast(`Drew [${t[0]}|${t[1]}]`);render1v1()}
-function pass1v1(){
-  if(G.turn!=='p'||G.phase!=='play')return;G.passes++;
-  if(G.passes>=2&&G.by.length===0){endBlocked1();return}
-  Sfx.play('pass');toast('You passed.');G.turn='a';render1v1();kickAI1(1200);
-}
-function kickAI1(delay){G.aiOn=true;render1v1();setTimeout(aiTurn1,delay)}
-function aiTurn1(){
-  if(G.phase!=='play')return;
-  const valid=G.aH.filter(t=>tileValid(t,G.L,G.R));
-  if(valid.length>0){
-    let best=valid[0];const sc=t=>t[0]+t[1]+(t[0]===t[1]?5:0);
-    for(const t of valid)if(sc(t)>sc(best))best=t;
-    let side='right';
-    if(G.L!==-1){const cL=tileFits(best,G.L),cR=tileFits(best,G.R);side=cL&&!cR?'left':cR&&!cL?'right':Math.random()<.5?'left':'right'}
-    place1v1(best,side);G.aH.splice(G.aH.indexOf(best),1);G.passes=0;G.aiOn=false;
-    if(checkEnd1('a'))return;G.turn='p';render1v1();
-  }else if(G.by.length>0){
-    const drawn=G.by.pop();G.aH.push(drawn);G.passes=0;Sfx.play('draw');toast(`AI drew (${G.by.length} left)`);
-    G.aiOn=true;render1v1();setTimeout(aiTurn1,tileValid(drawn,G.L,G.R)?1000:500);
-  }else{
-    G.passes++;Sfx.play('pass');toast('AI passed.');G.aiOn=false;
-    if(G.passes>=2){endBlocked1();return}G.turn='p';render1v1();
-  }
+  beginTurn1('a');
+  return true;
 }
 </script>
 
@@ -717,29 +808,44 @@ function endRound1(winner){
   G.phase='over';G.aiOn=false;
   const pts=pipSum(winner==='p'?G.aH:G.pH);
   if(winner==='p')scores.p+=pts;else scores.a+=pts;
-  recordHist1(winner==='p'?'You':'AI',pts);
-  if(winner==='p')confetti();
-  showOv1v1(winner==='p'?'win':'lose',pts,false);render1v1();
+  recordHist1(winner==='p'?'You':OPP1_NAME,pts);
+  const result=winner==='p'?'win':'lose';
+  const mw=scores.p>=100?'me':scores.a>=100?'opp':null;
+  if(result==='win')confetti();
+  if(G.mode==='host')sendTo(1,{type:'round_over1',result:winner==='p'?'lose':'win',pts,blocked:false,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+  showOv1v1(result,pts,false,G.aH,mw);render1v1();
 }
 function endBlocked1(){
   G.phase='over';G.aiOn=false;
   const pp=pipSum(G.pH),ap=pipSum(G.aH);
-  const w=pp<ap?'p':ap<pp?'a':'d';
-  if(w==='p'){scores.p+=ap;confetti()}else if(w==='a')scores.a+=pp;
-  recordHist1(w==='p'?'You':w==='a'?'AI':'Draw',w==='p'?ap:w==='a'?pp:0);
-  showOv1v1(w==='p'?'win':w==='d'?'draw':'lose',0,true);render1v1();
+  const w=pp<ap?'p':ap<pp?'a':'d';let pts=0;
+  if(w==='p'){pts=ap;scores.p+=pts;confetti()}else if(w==='a'){pts=pp;scores.a+=pts}
+  recordHist1(w==='p'?'You':w==='a'?OPP1_NAME:'Draw',pts);
+  const result=w==='p'?'win':w==='a'?'lose':'draw';
+  const mw=scores.p>=100?'me':scores.a>=100?'opp':null;
+  if(G.mode==='host')sendTo(1,{type:'round_over1',result:w==='p'?'lose':w==='a'?'win':'draw',pts,blocked:true,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+  showOv1v1(result,pts,true,G.aH,mw);render1v1();
 }
-function showOv1v1(result,pts,blocked){
-  const M={win:{e:'🎉',t:'You Win!',s:blocked?'Lowest pips wins!':`+${pts} points!`},lose:{e:'😔',t:'AI Wins!',s:blocked?'AI had fewer pips.':`AI earned +${pts} pts.`},draw:{e:'🤝',t:"It's a Draw!",s:'Equal pip counts!'}};
-  const mw=scores.p>=100?'p':scores.a>=100?'a':null;
-  if(mw){M.win.e=mw==='p'?'🏆':'💀';M.win.t=mw==='p'?'You Win the Match!':'AI Wins the Match!';M.lose.e=mw==='a'?'💀':'🏆';M.lose.t=mw==='a'?'AI Wins the Match!':'You Win the Match!'}
+function showOv1v1(result,pts,blocked,revealTiles,mw){
+  const oppN=OPP1_NAME;
+  const M={
+    win:{e:'🎉',t:'You Win!',s:blocked?'Lowest pips wins!':`+${pts} points!`},
+    lose:{e:'😔',t:`${oppN} Wins!`,s:blocked?`${oppN} had fewer pips.`:`${oppN} earned +${pts} pts.`},
+    draw:{e:'🤝',t:"It's a Draw!",s:'Equal pip counts!'}
+  };
+  if(mw){M.win.e='🏆';M.win.t='You Win the Match!';M.lose.e='💀';M.lose.t=`${oppN} Wins the Match!`}
   const c=M[result]||M.draw;
   $('ov-em').textContent=c.e;$('ov-ti').textContent=c.t;$('ov-su').textContent=c.s;
-  $('ov-l1').textContent='You';$('ov-l2').textContent='AI';animateCount('ov-s1',scores.p);animateCount('ov-s2',scores.a);
+  $('ov-l1').textContent='You';$('ov-l2').textContent=oppN;animateCount('ov-s1',scores.p);animateCount('ov-s2',scores.a);
   Sfx.play(result==='win'?'win':result==='draw'?'draw_game':'lose');
   const nb=$('ov-nx');
-  if(mw){nb.textContent='🔄 New Game';nb.onclick=init1v1}else{nb.textContent='Next Round ▶';nb.onclick=next1v1Round}
-  renderReveal("🤖 AI's remaining tiles",[{label:'AI Player',tiles:G.aH}]);
+  if(G&&G.mode==='client'){nb.textContent=mw?'🔄 New match…':'⏳ Waiting for host…';nb.style.opacity='.5';nb.style.cursor='default';nb.onclick=null}
+  else{
+    nb.style.opacity='';nb.style.cursor='';
+    if(mw){nb.textContent='🔄 New Game';nb.onclick=(G&&G.mode==='host')?newMatch1Online:init1v1}
+    else{nb.textContent='Next Round ▶';nb.onclick=(G&&G.mode==='host')?hostNextRound1:next1v1Round}
+  }
+  renderReveal(`👁 ${oppN}'s remaining tiles`,[{label:oppN,tiles:revealTiles||[]}]);
   $('ov').classList.add('on');
 }
 function render1v1(){r1Top();r1Board();r1Hands();r1Boneyard();r1Ctrl();
@@ -755,13 +861,13 @@ function r1Top(){
   $('ai-hand').innerHTML=G.aH.map(()=>'<div class="ai-tile"></div>').join('');
   const el=$('stat-msg');
   if(G.phase!=='play'){el.textContent='';el.className='stat';return}
-  if(G.aiOn){el.className='stat cyan thdots';el.textContent='🤖 AI is thinking'}
+  if(G.aiOn){el.className='stat cyan thdots';el.textContent=(G.mode==='ai')?'🤖 AI is thinking':('⏳ '+OPP1_NAME+' is playing')}
   else if(G.turn==='p'){
     if(G.L===-1){el.className='stat gold';el.textContent='🎯 First move — drag any tile onto the table!'}
     else if(G.sel!==null){const t=G.pH[G.sel],vs=r1ValidSides(t);if(vs.length){el.className='stat grn';el.textContent=`✅ [${t[0]}|${t[1]}] selected — drop on the table!`}else{el.className='stat red';el.textContent=`⚠️ [${t[0]}|${t[1]}] can't play — try another tile`}}
-    else if(!anyValid(G.pH,G.L,G.R)){el.className='stat red';el.textContent=G.by.length>0?'📥 No valid moves — Draw!':'⏭ No moves — Pass!'}
+    else if(!anyValid(G.pH,G.L,G.R)){el.className='stat cyan thdots';el.textContent=G.by.length>0?'📥 No moves — drawing':'⏭ No moves — passing'}
     else{el.className='stat';el.textContent='🖱 Drag a tile onto the table'}
-  }
+  }else{el.className='stat';el.textContent=''}
 }
 </script>
 
@@ -769,11 +875,9 @@ function r1Top(){
 <script>
 // ═══ 1v1 RENDER HELPERS ═══
 function r1Board(){
-  const chain=$('b-chain');
-  if(!G.bd.length){chain.innerHTML='<div class="board-ph" id="b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';r1Board._n=0;return}
-  if(G.bd.length>(r1Board._n||0))Sfx.play('place');r1Board._n=G.bd.length;
-  chain.innerHTML=G.bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('b-chain','b-scroll')));
+  const grew=G.bd.length>(r1Board._n||0);
+  if(grew)Sfx.play('place');r1Board._n=G.bd.length;
+  renderChain(G.bd,'b-chain','b-scroll');
 }
 function r1Hands(){
   const myTurn=G.turn==='p'&&!G.aiOn&&G.phase==='play';
@@ -783,7 +887,7 @@ function r1Hands(){
       if(G.sel===i)cls='sel';
       else{const cL=G.L===-1||tileFits(tile,G.L),cR=G.L===-1||tileFits(tile,G.R);if(!cL&&!cR)cls='dim';else if(cL&&cR)cls='hi-B';else cls=cL?'hi-L':'hi-R'}
     }
-    const itemCls=_deal1?'hand-item deal':'hand-item';
+    const itemCls=(_deal1?'hand-item deal':'hand-item')+(tile===G._justDrawn?' just-drawn':'');
     const itemStyle=_deal1?` style="animation-delay:${i*55}ms"`:'';
     return `<div class="${itemCls}" data-i="${i}" draggable="true" ondragstart="P1.onDragStart(event,${i})" ondragend="P1.onDragEnd()" ondragover="P1.onHandOver(event,${i})" ondragleave="P1.onHandLeave(event)" ondrop="P1.onHandDrop(event,${i})" ontouchstart="P1.onTouchStart(event,${i})" ontouchmove="P1.onTouchMove(event)" ontouchend="P1.onTouchEnd(event)" onclick="P1.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
   }).join('');
@@ -793,40 +897,39 @@ function r1Boneyard(){
   const n=G.by.length;
   $('by-num').textContent=n;
   $('by-stack').innerHTML=Array(Math.min(n,14)).fill('<div class="by-face"></div>').join('');
-  $('btn-draw').textContent=`📥 Draw (${n})`;
 }
-function r1Ctrl(){
-  const myTurn=G.turn==='p'&&!G.aiOn&&G.phase==='play';
-  const bd=$('btn-draw'),bp=$('btn-pass');
-  if(!myTurn){bd.disabled=bp.disabled=true;return}
-  bd.disabled=!(G.by.length>0&&!anyValid(G.pH,G.L,G.R));
-  bp.disabled=!(G.by.length===0&&!anyValid(G.pH,G.L,G.R));
-}
+function r1Ctrl(){/* controls removed — draw & pass are automatic */}
 </script>
 
 
 <script>
 // ═══ PEERJS NETWORKING ═══
 const PPREFIX='dom2v2-';
-let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1};
-function netDestroy(){if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1}}
+let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1,cap:4,mode:'2v2'};
+function netDestroy(){if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1,cap:4,mode:'2v2'}}
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[~~(Math.random()*c.length)]).join('')}
 function myName(){return ($('lb-name').value.trim()||'Player').slice(0,16)}
 function createRoom(){
   const code=genCode();
-  NET.roomCode=code;NET.role='host';NET.seat=0;NET.players[0]=myName();NET.count=1;
+  NET.mode=ONLINE_MODE;NET.cap=ONLINE_MODE==='1v1'?2:4;
+  NET.roomCode=code;NET.role='host';NET.seat=0;NET.players=Array(4).fill('');NET.players[0]=myName();NET.count=1;
   showScreen('screen-waiting');
   $('wr-code-box').style.display='block';$('wr-code').textContent=code;
-  $('wr-title').textContent='Room Created!';$('wr-sub').textContent='Share this code with 3 friends';
+  $('wr-start-btn').style.display='';$('wr-start-btn').classList.remove('show');
+  $('wr-title').textContent='Room Created!';$('wr-sub').textContent=NET.cap===2?'Share this code with 1 friend':'Share this code with 3 friends';
   updateWR();
   NET.peer=new Peer(PPREFIX+code,{debug:0});
   NET.peer.on('open',()=>toast('Room ready: '+code));
   NET.peer.on('connection',conn=>{
-    if(NET.count>=4){conn.close();return}
+    if(NET.count>=NET.cap){conn.close();return}
     const seat=NET.count++;NET.conns[seat]=conn;
-    conn.on('open',()=>conn.send({type:'welcome',seat,players:NET.players}));
+    conn.on('open',()=>conn.send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap}));
     conn.on('data',data=>onFromClient(seat,data));
-    conn.on('close',()=>{toast((NET.players[seat]||'P'+(seat+1))+' left');NET.players[seat]='';NET.count--;delete NET.conns[seat];updateWR();broadcastAll({type:'players',players:NET.players,count:NET.count})});
+    conn.on('close',()=>{
+      toast((NET.players[seat]||'P'+(seat+1))+' left');NET.players[seat]='';NET.count--;delete NET.conns[seat];updateWR();
+      broadcastAll({type:'players',players:NET.players,count:NET.count});
+      if(NET.mode==='1v1'&&G&&G.mode==='host'&&G.phase==='play'){toast('Opponent left — returning to menu');setTimeout(goMenu,1400)}
+    });
   });
   NET.peer.on('error',err=>{if(err.type==='unavailable-id'){toast('Code taken, retrying…');setTimeout(createRoom,500)}else toast('Connection error: '+err.type)});
 }
@@ -843,7 +946,7 @@ function joinRoom(){
   });
   NET.peer.on('error',err=>{if(err.type==='peer-unavailable')toast('Room not found — check code');else toast('Error: '+err.type);netDestroy();showScreen('screen-lobby')});
 }
-function broadcastAll(msg){for(let s=1;s<=3;s++){const c=NET.conns[s];if(c&&c.open)c.send(msg)}}
+function broadcastAll(msg){for(let s=1;s<(NET.cap||4);s++){const c=NET.conns[s];if(c&&c.open)c.send(msg)}}
 function sendTo(seat,msg){const c=NET.conns[seat];if(c&&c.open)c.send(msg)}
 function sendHost(msg){const c=NET.conns[0];if(c&&c.open)c.send(msg)}
 </script>
@@ -855,43 +958,140 @@ function onFromClient(seat,data){
   switch(data.type){
     case 'join':
       NET.players[seat]=data.name;
-      NET.conns[seat].send({type:'welcome',seat,players:NET.players});
+      NET.conns[seat].send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap});
       broadcastAll({type:'players',players:NET.players,count:NET.count});
-      updateWR();if(NET.count===4)$('wr-start-btn').classList.add('show');break;
-    case 'action':
+      updateWR();if(NET.count===NET.cap)$('wr-start-btn').classList.add('show');break;
+    case 'action': // 2v2
       if(G2H.turn===seat&&G2H.phase==='play')hostApplyMove(seat,data);break;
+    case 'play1': // 1v1 online: client (seat 1) plays a tile
+      if(G&&G.mode==='host'&&G.turn==='a'&&G.phase==='play')hostApply1(data.tile,data.side);break;
   }
 }
 function onFromHost(data){
   switch(data.type){
-    case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;updateWR();break;
+    case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
     case 'players':NET.players=data.players;NET.count=data.count;updateWR();break;
+    // ── 2v2 ──
     case 'deal':G2C.myTiles=[...data.tiles];G2C.scores={...data.scores};G2C.round=data.round;if(data.scores&&data.scores.A===0&&data.scores.B===0)history2=[];_deal2=true;break;
     case 'state':g2ClientApply(data.s);break;
     case 'tile_drawn':G2C.myTiles.push(data.tile);G2Render();break;
     case 'show_game':$('ov').classList.remove('on');MODE='2v2';g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();break;
     case 'round_over':G2C.scores={...data.scores};G2C.phase='over';showOv2v2(data);break;
+    // ── 1v1 online ──
+    case 'deal1':clientDeal1(data);break;
+    case 'state1':clientState1(data.s);break;
+    case 'draw1':clientDraw1(data.tile);break;
+    case 'pass1':clientPass1(data.who);break;
+    case 'round_over1':clientRoundOver1(data);break;
   }
 }
 const SEAT_LABELS=['Host','Player 2','Player 3','Player 4'];
 const SEAT_TEAMS=['A','B','A','B'];
 function updateWR(){
-  const my=NET.seat;let html='';
-  for(let i=0;i<4;i++){
+  const my=NET.seat,cap=NET.cap||4;let html='';
+  for(let i=0;i<cap;i++){
     const name=NET.players[i]||(i===my?myName():'');
     const filled=!!name;
-    const tag=i===my?' (You)':i===(my+2)%4&&my>=0?' (Partner)':'';
-    const team=SEAT_TEAMS[i];
-    html+=`<div class="wr-slot"><div class="wr-dot${filled?' on':''}"></div><div class="wr-sname${filled?' on':''}">${filled?(name+tag):SEAT_LABELS[i]}</div><div class="wr-tag ${team}">Team ${team}</div></div>`;
+    let tag='';
+    if(i===my)tag=' (You)';
+    else if(cap===4&&my>=0&&i===(my+2)%4)tag=' (Partner)';
+    const label=filled?(name+tag):(SEAT_LABELS[i]||('Player '+(i+1)));
+    const teamHtml=cap===4?`<div class="wr-tag ${SEAT_TEAMS[i]}">Team ${SEAT_TEAMS[i]}</div>`:'';
+    html+=`<div class="wr-slot"><div class="wr-dot${filled?' on':''}"></div><div class="wr-sname${filled?' on':''}">${label}</div>${teamHtml}</div>`;
   }
   $('wr-slots').innerHTML=html;
   const cnt=NET.count;
-  $('wr-count-lbl').textContent=`Players (${cnt} / 4)`;
-  $('wr-wait').textContent=cnt<4?'Waiting for players to join…':'All players connected! Ready to start.';
-  if(NET.role==='host'&&cnt>=4)$('wr-start-btn').classList.add('show');
+  $('wr-count-lbl').textContent=`Players (${cnt} / ${cap})`;
+  $('wr-wait').textContent=cnt<cap?'Waiting for players to join…':'All players connected! Ready to start.';
+  if(NET.role==='host'&&cnt>=cap)$('wr-start-btn').classList.add('show');
 }
 function copyCode(){const code=$('wr-code').textContent;if(navigator.clipboard)navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code));else toast('Code: '+code)}
-function hostStartGame(){if(NET.count<4){toast('Need 4 players to start');return}hostDeal()}
+function hostStartGame(){if(NET.count<NET.cap){toast('Need '+NET.cap+' players to start');return}if(NET.mode==='1v1')hostDeal1();else hostDeal()}
+</script>
+
+
+<script>
+// ═══ 1v1 ONLINE NETCODE (host-authoritative; reuses the 1v1 turn machine) ═══
+// Seat 0 = host (renders itself as 'p'); seat 1 = client (also renders itself as 'p').
+function hostDeal1(){
+  MODE='1v1';
+  const cont=(G&&G.mode==='host');
+  if(!cont){scores={p:0,a:0};roundNo=0;history1=[]}
+  roundNo++;
+  OPP1_NAME=NET.players[1]||'Opponent';
+  setup1v1UI(true,OPP1_NAME,NET.players[0]||'You');
+  const deck=shuffle(ALL_TILES);
+  G={mode:'host',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
+  let first='p';
+  outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
+  sendTo(1,{type:'deal1',tiles:G.aH,oppName:NET.players[0]||'Host',selfName:NET.players[1]||'You',
+    scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length});
+  $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
+  setTimeout(()=>beginTurn1(first),900);
+}
+function boardForNet(){return G.bd.map(o=>({left:o.left,right:o.right,dbl:o.dbl}))}
+function hostBroadcast1(){
+  if(!G||G.mode!=='host')return;
+  sendTo(1,{type:'state1',s:{
+    board:boardForNet(),L:G.L,R:G.R,byCount:G.by.length,oppCount:G.pH.length,
+    turn:(G.turn==='a'?'p':(G.turn==='p'?'a':null)),phase:G.phase,scores:{p:scores.a,a:scores.p}
+  }});
+}
+function hostApply1(tile,side){
+  if(!G||G.mode!=='host'||G.turn!=='a'||G.phase!=='play')return;
+  const idx=G.aH.findIndex(t=>t[0]===tile[0]&&t[1]===tile[1]);
+  if(idx===-1)return;
+  const t=G.aH[idx];
+  if(G.L!==-1&&!tileFits(t,side==='left'?G.L:G.R))return;
+  place1v1(t,side);G.aH.splice(idx,1);G.passes=0;
+  hostBroadcast1();
+  if(checkEnd1('a'))return;
+  beginTurn1('p');
+}
+function hostNextRound1(){$('ov').classList.remove('on');hostDeal1()}
+function newMatch1Online(){if(G)G.mode='host';scores={p:0,a:0};roundNo=0;history1=[];$('ov').classList.remove('on');hostDeal1()}
+
+// ── client side (thin renderer; sends only its own plays) ──
+function clientDeal1(d){
+  MODE='1v1';
+  OPP1_NAME=d.oppName||'Opponent';
+  scores={p:(d.scores&&d.scores.p)||0,a:(d.scores&&d.scores.a)||0};
+  roundNo=d.round||1;
+  if(scores.p===0&&scores.a===0)history1=[];
+  setup1v1UI(true,OPP1_NAME,d.selfName||'You');
+  G={mode:'client',pH:(d.tiles||[]).map(t=>[t[0],t[1]]),aH:Array(d.oppCount||7).fill([0,0]),by:Array(d.byCount||0).fill([0,0]),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
+  $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
+}
+function clientState1(s){
+  if(!G||G.mode!=='client')return;
+  const prevBy=G.by.length;
+  G.bd=(s.board||[]).map(o=>({left:o.left,right:o.right,dbl:o.dbl}));
+  G.L=s.L;G.R=s.R;
+  G.by=Array(s.byCount||0).fill([0,0]);
+  G.aH=Array(s.oppCount||0).fill([0,0]);
+  G.turn=s.turn;G.aiOn=(s.turn==='a');G.phase=s.phase;
+  if(s.scores)scores={p:s.scores.p,a:s.scores.a};
+  if(G.by.length<prevBy)pulseBoneyard();
+  render1v1();
+}
+function clientDraw1(tile){
+  if(!G||G.mode!=='client')return;
+  G.pH.push([tile[0],tile[1]]);G._justDrawn=G.pH[G.pH.length-1];
+  Sfx.play('draw');pulseBoneyard();render1v1();
+  setTimeout(()=>{G._justDrawn=null;render1v1()},760);
+}
+function clientPass1(who){
+  // who in authoritative terms: 'a'=client(me)→bottom av-p; 'p'=host(opponent)→top av-ai
+  Sfx.play('pass');flashStamp(who==='a'?'av-p':'av-ai','PASS','var(--c4)');
+}
+function clientRoundOver1(d){
+  if(!G)return;
+  G.phase='over';
+  scores={p:d.scores.p,a:d.scores.a};if(d.round)roundNo=d.round;
+  recordHist1(d.result==='win'?'You':d.result==='draw'?'Draw':OPP1_NAME,d.pts||0);
+  if(d.result==='win')confetti();
+  showOv1v1(d.result,d.pts||0,d.blocked,d.reveal||[],d.mw||null);
+}
 </script>
 
 
@@ -1043,11 +1243,9 @@ function g2RenderTop(){
 <script>
 // ═══ 2v2 RENDER HELPERS ═══
 function g2RenderBoard(){
-  const chain=$('g2-b-chain');
-  if(!G2C.board||!G2C.board.length){chain.innerHTML='<div class="board-ph" id="g2-b-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';g2RenderBoard._n=0;return}
-  if(G2C.board.length>(g2RenderBoard._n||0))Sfx.play('place');g2RenderBoard._n=G2C.board.length;
-  chain.innerHTML=G2C.board.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-  requestAnimationFrame(()=>requestAnimationFrame(()=>scaleBoardEl('g2-b-chain','g2-b-scroll')));
+  const grew=G2C.board.length>(g2RenderBoard._n||0);
+  if(grew)Sfx.play('place');g2RenderBoard._n=G2C.board.length;
+  renderChain(G2C.board,'g2-b-chain','g2-b-scroll');
 }
 function g2RenderHand(){
   const myTurn=G2C.turn===NET.seat&&G2C.phase==='play';
@@ -1226,8 +1424,8 @@ const P2=makePlacement({
   reorder:(from,to)=>{const a=G2C.myTiles;if(!a||from<0||from>=a.length)return;const t=a.splice(from,1)[0];a.splice(Math.max(0,Math.min(to,a.length)),0,t);G2C.sel=null;Sfx.play('select');G2Render()}
 });
 window.addEventListener('resize',()=>{
-  if(G&&G.bd&&G.bd.length)scaleBoardEl('b-chain','b-scroll');
-  if(G2C&&G2C.board&&G2C.board.length)scaleBoardEl('g2-b-chain','g2-b-scroll');
+  if(G&&G.bd&&G.bd.length)renderChain(G.bd,'b-chain','b-scroll');
+  if(G2C&&G2C.board&&G2C.board.length)renderChain(G2C.board,'g2-b-chain','g2-b-scroll');
 });
 document.addEventListener('pointerdown',()=>Sfx.resume(),{once:true});
 syncSoundBtn();

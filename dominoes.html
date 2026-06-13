@@ -468,7 +468,7 @@ body{
 .chat-opt{padding:9px 14px;border-radius:10px;border:2px solid var(--c5);background:rgba(13,13,26,.5);color:#fff;font-family:var(--font-body);font-weight:700;font-size:.95rem;cursor:pointer;text-align:right;direction:rtl;transition:transform .12s,background .15s,border-color .15s}
 .chat-opt:hover{background:var(--c5);border-color:var(--c2);transform:translateX(3px)}
 .chat-opt:active{transform:scale(.97)}
-.chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.2rem;padding:8px 16px;border:4px solid var(--c2);border-radius:14px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:72vw;text-align:center;box-shadow:0 0 22px rgba(0,245,212,.5)}
+.chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.85rem;padding:13px 26px;border:4px solid var(--c2);border-radius:16px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:84vw;text-align:center;box-shadow:0 0 26px rgba(0,245,212,.55)}
 /* ── PROFILE ── */
 .av,.side-av{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
 .pf-open-btn{position:relative;z-index:1;display:flex;align-items:center;gap:10px;background:rgba(45,27,78,.7);border:3px solid var(--c2);border-radius:9999px;padding:5px 18px 5px 5px;color:#fff;font-family:var(--font-head);font-weight:800;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:transform .15s,box-shadow .15s}
@@ -1037,6 +1037,7 @@ function onFromHost(data){
     case 'players':if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);NET.count=data.count;updateWR();break;
     case 'reseat':NET.seat=data.seat;updateWR();break;
     case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
+    case 'g2pass':flashStamp(chatAnchorFor(data.seat),'كاعد عالعير','var(--c4)');break;
     case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
     case 'deal':G2C.myTiles=[...data.tiles];G2C.scores={...data.scores};G2C.round=data.round;if(data.scores&&data.scores.A===0&&data.scores.B===0)history2=[];_deal2=true;break;
@@ -1227,10 +1228,17 @@ function g2AutoPassIfStuck(){
     if(NET.role!=='host'||!G2H||G2H.phase!=='play'||G2H.turn!==seat)return;
     if(anyValid(G2H.hands[seat]||[],G2H.L,G2H.R))return; // state changed — abort
     G2H.passes++;G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} passed`;
+    g2FlashPass(seat);
     if(G2H.passes>=4){g2EndBlocked();return}
     G2H.turn=(G2H.turn+1)%4;
     g2SyncAll();
   },950);
+}
+// Show the same "كاعد عالعير" pass stamp as 1v1, over the passing player's avatar,
+// on the host and every client (mapped to each viewer's seat layout).
+function g2FlashPass(seat){
+  flashStamp(chatAnchorFor(seat),'كاعد عالعير','var(--c4)');
+  broadcastAll({type:'g2pass',seat});
 }
 function hostApplyMove(seat,data){
   if(!G2H||!G2H.hands)return; // no active 2v2 game — ignore stray actions
@@ -1250,6 +1258,7 @@ function hostApplyMove(seat,data){
     G2H.turn=(G2H.turn+1)%4;
   }else if(action==='pass'){
     G2H.passes++;G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} passed`;
+    g2FlashPass(seat);
     if(G2H.passes>=4){g2EndBlocked();return}
     G2H.turn=(G2H.turn+1)%4;
   }

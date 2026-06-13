@@ -561,11 +561,21 @@ function fitChain(chainId,scrollId){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
   chain.style.transform='';
+  scroll.style.overflowX='hidden';scroll.style.justifyContent='center';
   const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
   const natW=chain.scrollWidth,natH=chain.scrollHeight;
   if(natW<=0||natH<=0||availW<=0||availH<=0)return;
-  const s=Math.min(availW/natW,availH/natH,1);
-  if(s<1){chain.style.transform=`scale(${s})`;chain.style.transformOrigin='center center'}
+  const fit=Math.min(availW/natW,availH/natH,1);
+  const MIN=0.55; // below this the tiles get too small to read — scroll instead
+  if(fit>=MIN){
+    if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
+  }else{
+    // Too long to show readably: scale only to fit height, then scroll horizontally.
+    const hs=Math.min(availH/natH,1);
+    if(hs<1){chain.style.transform=`scale(${hs})`;chain.style.transformOrigin='left center'}
+    scroll.style.overflowX='auto';scroll.style.justifyContent='flex-start';
+    requestAnimationFrame(()=>{scroll.scrollLeft=scroll.scrollWidth});
+  }
 }
 // Show a "PASS" (or other) stamp centered over an element (e.g. an avatar)
 function flashStamp(anchorId,text,color){
@@ -907,14 +917,24 @@ function createRoom(){
   NET.peer=new Peer(PPREFIX+code,{debug:0});
   NET.peer.on('open',()=>toast('Room ready: '+code));
   NET.peer.on('connection',conn=>{
-    if(NET.count>=NET.cap){conn.close();return}
-    const seat=NET.count++;NET.conns[seat]=conn;
+    // Assign the first empty seat (1..cap-1) rather than using count as an index,
+    // so a mid-list leave + new join can't collide with / overwrite another seat.
+    let seat=-1;
+    for(let s=1;s<NET.cap;s++){if(!NET.conns[s]){seat=s;break}}
+    if(seat===-1){conn.close();return} // room full
+    NET.conns[seat]=conn;NET.count=1+Object.keys(NET.conns).length;
     conn.on('open',()=>conn.send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap}));
     conn.on('data',data=>onFromClient(seat,data));
     conn.on('close',()=>{
-      toast((NET.players[seat]||'P'+(seat+1))+' left');NET.players[seat]='';NET.count--;delete NET.conns[seat];updateWR();
+      const wasName=NET.players[seat]||'P'+(seat+1);
+      NET.players[seat]='';delete NET.conns[seat];NET.count=1+Object.keys(NET.conns).length;updateWR();
       broadcastAll({type:'players',players:NET.players,count:NET.count});
-      if(NET.mode==='1v1'&&G&&G.mode==='host'&&G.phase==='play'){toast('Opponent left — returning to menu');setTimeout(goMenu,1400)}
+      // Mid-game drop: a missing player would stall the turn machine, so end the game.
+      const inGame1=NET.mode==='1v1'&&G&&G.mode==='host'&&G.phase==='play';
+      const inGame2=NET.mode==='2v2'&&G2H&&G2H.phase==='play';
+      if(inGame1){toast(wasName+' left — returning to menu');setTimeout(goMenu,1400)}
+      else if(inGame2){toast(wasName+' disconnected — ending game');broadcastAll({type:'game_aborted',who:wasName});setTimeout(goMenu,1700)}
+      else{toast(wasName+' left')}
     });
   });
   NET.peer.on('error',err=>{if(err.type==='unavailable-id'){toast('Code taken, retrying…');setTimeout(createRoom,500)}else toast('Connection error: '+err.type)});
@@ -946,7 +966,7 @@ function onFromClient(seat,data){
       NET.players[seat]=data.name;
       NET.conns[seat].send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap});
       broadcastAll({type:'players',players:NET.players,count:NET.count});
-      updateWR();if(NET.count===NET.cap)$('wr-start-btn').classList.add('show');break;
+      updateWR();if(NET.count>=NET.cap)$('wr-start-btn').classList.add('show');break;
     case 'action': // 2v2
       if(G2H.turn===seat&&G2H.phase==='play')hostApplyMove(seat,data);break;
     case 'play1': // 1v1 online: client (seat 1) plays a tile
@@ -957,16 +977,19 @@ function onFromHost(data){
   switch(data.type){
     case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
     case 'players':NET.players=data.players;NET.count=data.count;updateWR();break;
+    case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
     case 'deal':G2C.myTiles=[...data.tiles];G2C.scores={...data.scores};G2C.round=data.round;if(data.scores&&data.scores.A===0&&data.scores.B===0)history2=[];_deal2=true;break;
     case 'state':g2ClientApply(data.s);break;
     case 'tile_drawn':G2C.myTiles.push(data.tile);G2Render();break;
+    case 'resync_hand':G2C.myTiles=(data.tiles||[]).map(t=>[t[0],t[1]]);G2C.sel=null;G2Render();break;
     case 'show_game':$('ov').classList.remove('on');MODE='2v2';g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();break;
     case 'round_over':G2C.scores={...data.scores};G2C.phase='over';showOv2v2(data);break;
     // ── 1v1 online ──
     case 'deal1':clientDeal1(data);break;
     case 'state1':clientState1(data.s);break;
     case 'draw1':clientDraw1(data.tile);break;
+    case 'hand1':if(G&&G.mode==='client'){G.pH=(data.tiles||[]).map(t=>[t[0],t[1]]);G.sel=null;render1v1()}break;
     case 'pass1':clientPass1(data.who);break;
     case 'round_over1':clientRoundOver1(data);break;
   }
@@ -1024,11 +1047,15 @@ function hostBroadcast1(){
   }});
 }
 function hostApply1(tile,side){
-  if(!G||G.mode!=='host'||G.turn!=='a'||G.phase!=='play')return;
+  if(!G||G.mode!=='host')return;
+  // If anything is off (not their turn / not in hand / doesn't fit), the client
+  // has already optimistically removed the tile — send its authoritative hand back.
+  const resync=()=>sendTo(1,{type:'hand1',tiles:G.aH});
+  if(G.turn!=='a'||G.phase!=='play'){resync();return}
   const idx=G.aH.findIndex(t=>t[0]===tile[0]&&t[1]===tile[1]);
-  if(idx===-1)return;
+  if(idx===-1){resync();return}
   const t=G.aH[idx];
-  if(G.L!==-1&&!tileFits(t,side==='left'?G.L:G.R))return;
+  if(G.L!==-1&&!tileFits(t,side==='left'?G.L:G.R)){resync();return}
   place1v1(t,side);G.aH.splice(idx,1);G.passes=0;
   hostBroadcast1();
   if(checkEnd1('a'))return;
@@ -1103,15 +1130,34 @@ function g2SyncAll(){
   G2C.turn=G2H.turn;G2C.phase=G2H.phase;G2C.scores=G2H.scores;G2C.round=G2H.round;G2C.lastAct=G2H.lastAct;
   if(NET.seat===0)G2C.myTiles=[...G2H.hands[0]];G2C.sel=null;G2Render();
   broadcastAll({type:'state',s:st});
+  g2AutoPassIfStuck();
+}
+// If the player whose turn it is has no playable tile, the host auto-passes for
+// them (mirrors the 1v1 auto-pass) so nobody can stall the round by forgetting.
+function g2AutoPassIfStuck(){
+  if(NET.role!=='host'||!G2H||G2H.phase!=='play')return;
+  const seat=G2H.turn;
+  if(anyValid(G2H.hands[seat]||[],G2H.L,G2H.R))return; // can play — wait for the move
+  setTimeout(()=>{
+    if(NET.role!=='host'||!G2H||G2H.phase!=='play'||G2H.turn!==seat)return;
+    if(anyValid(G2H.hands[seat]||[],G2H.L,G2H.R))return; // state changed — abort
+    G2H.passes++;G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} passed`;
+    if(G2H.passes>=4){g2EndBlocked();return}
+    G2H.turn=(G2H.turn+1)%4;
+    g2SyncAll();
+  },950);
 }
 function hostApplyMove(seat,data){
-  if(G2H.turn!==seat||G2H.phase!=='play')return;
+  // A rejected client play means the client already removed the tile optimistically;
+  // push its authoritative hand back so it can't desync. (seat 0 = host, never optimistic.)
+  const resync=()=>{if(seat!==0)sendTo(seat,{type:'resync_hand',tiles:G2H.hands[seat]})};
+  if(G2H.turn!==seat||G2H.phase!=='play'){resync();return}
   const{action,tile,side}=data;
   if(action==='play'){
     const idx=G2H.hands[seat].findIndex(([a,b])=>tile&&a===tile[0]&&b===tile[1]);
-    if(idx===-1)return;
+    if(idx===-1){resync();return}
     const t=G2H.hands[seat][idx];
-    if(G2H.L!==-1&&!tileFits(t,side==='left'?G2H.L:G2H.R))return;
+    if(G2H.L!==-1&&!tileFits(t,side==='left'?G2H.L:G2H.R)){resync();return}
     g2HostPlace(t,side);G2H.hands[seat].splice(idx,1);G2H.passes=0;
     G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} played [${t[0]}|${t[1]}]`;
     if(G2H.hands[seat].length===0){g2EndRound(seat);return}

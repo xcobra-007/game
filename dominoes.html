@@ -385,7 +385,7 @@ body{
   <div class="hand-wrap" id="g2-hand"></div>
   <!-- Controls -->
   <div class="ctrl">
-    <button class="btn btn-pass" id="g2-bP" onclick="g2Pass()" disabled>⏭ Pass</button>
+    <button class="btn btn-pass" id="g2-bP" onclick="g2Pass()" disabled>⏭ كاعد عالعير</button>
   </div>
 </div>
 
@@ -759,7 +759,7 @@ function autoDraw1(who,cb){
 function autoPass1(who){
   G.passes=(G.passes||0)+1;
   Sfx.play('pass');
-  flashStamp(who==='p'?'av-p':'av-ai','PASS','var(--c4)');
+  flashStamp(who==='p'?'av-p':'av-ai','كاعد عالعير','var(--c4)');
   if(G.mode==='host')broadcastAll({type:'pass1',who});
   render1v1();
   const blocked=G.passes>=2&&G.by.length===0;
@@ -861,7 +861,7 @@ function r1Top(){
   else if(G.turn==='p'){
     if(G.L===-1){el.className='stat gold';el.textContent='🎯 First move — drag any tile onto the table!'}
     else if(G.sel!==null){const t=G.pH[G.sel],vs=r1ValidSides(t);if(vs.length){el.className='stat grn';el.textContent=`✅ [${t[0]}|${t[1]}] selected — drop on the table!`}else{el.className='stat red';el.textContent=`⚠️ [${t[0]}|${t[1]}] can't play — try another tile`}}
-    else if(!anyValid(G.pH,G.L,G.R)){el.className='stat cyan thdots';el.textContent=G.by.length>0?'📥 No moves — drawing':'⏭ No moves — passing'}
+    else if(!anyValid(G.pH,G.L,G.R)){el.className='stat cyan thdots';el.textContent=G.by.length>0?'📥 No moves — drawing':'⏭ No moves — كاعد عالعير'}
     else{el.className='stat';el.textContent='🖱 Drag a tile onto the table'}
   }else{el.className='stat';el.textContent=''}
 }
@@ -1095,7 +1095,7 @@ function clientDraw1(tile){
 }
 function clientPass1(who){
   // who in authoritative terms: 'a'=client(me)→bottom av-p; 'p'=host(opponent)→top av-ai
-  Sfx.play('pass');flashStamp(who==='a'?'av-p':'av-ai','PASS','var(--c4)');
+  Sfx.play('pass');flashStamp(who==='a'?'av-p':'av-ai','كاعد عالعير','var(--c4)');
 }
 function clientRoundOver1(d){
   if(!G)return;
@@ -1265,7 +1265,7 @@ function g2RenderTop(){
   if(turn===my){
     if(G2C.L===-1)g2ShowStat('🎯 First move — drag any tile onto the table!','gold');
     else if(G2C.sel!==null){const t=G2C.myTiles[G2C.sel],vs=g2VSides(t);vs.length?g2ShowStat(`✅ [${t[0]}|${t[1]}] selected — drop on the table!`,'grn'):g2ShowStat(`⚠️ [${t[0]}|${t[1]}] can't play — try another tile`,'red')}
-    else if(!anyValid(G2C.myTiles,G2C.L,G2C.R))g2ShowStat('⏭ No valid moves — Pass!','red');
+    else if(!anyValid(G2C.myTiles,G2C.L,G2C.R))g2ShowStat('⏭ No valid moves — كاعد عالعير!','red');
     else g2ShowStat('🖱 Drag a tile onto the table','');
   }else g2ShowStat(`⏳ ${tname}'s turn…`,'cyan',true);
 }

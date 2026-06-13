@@ -574,7 +574,9 @@ function fitChain(chainId,scrollId){
     const hs=Math.min(availH/natH,1);
     if(hs<1){chain.style.transform=`scale(${hs})`;chain.style.transformOrigin='left center'}
     scroll.style.overflowX='auto';scroll.style.justifyContent='flex-start';
-    requestAnimationFrame(()=>{scroll.scrollLeft=scroll.scrollWidth});
+    // transform shrinks the visuals but not the layout width, so target the scaled
+    // right edge (natW*hs) rather than scrollWidth to avoid scrolling into blank space.
+    requestAnimationFrame(()=>{scroll.scrollLeft=Math.max(0,natW*hs-scroll.clientWidth)});
   }
 }
 // Show a "PASS" (or other) stamp centered over an element (e.g. an avatar)
@@ -929,9 +931,10 @@ function createRoom(){
       const wasName=NET.players[seat]||'P'+(seat+1);
       NET.players[seat]='';delete NET.conns[seat];NET.count=1+Object.keys(NET.conns).length;updateWR();
       broadcastAll({type:'players',players:NET.players,count:NET.count});
-      // Mid-game drop: a missing player would stall the turn machine, so end the game.
-      const inGame1=NET.mode==='1v1'&&G&&G.mode==='host'&&G.phase==='play';
-      const inGame2=NET.mode==='2v2'&&G2H&&G2H.phase==='play';
+      // A drop while the game screen is up (active play OR round-end overlay) would
+      // stall the next round on the missing player, so end the session.
+      const inGame1=NET.mode==='1v1'&&$('screen-1v1').style.display!=='none';
+      const inGame2=NET.mode==='2v2'&&$('screen-2v2').style.display!=='none';
       if(inGame1){toast(wasName+' left — returning to menu');setTimeout(goMenu,1400)}
       else if(inGame2){toast(wasName+' disconnected — ending game');broadcastAll({type:'game_aborted',who:wasName});setTimeout(goMenu,1700)}
       else{toast(wasName+' left')}
@@ -967,10 +970,10 @@ function onFromClient(seat,data){
       NET.conns[seat].send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap});
       broadcastAll({type:'players',players:NET.players,count:NET.count});
       updateWR();if(NET.count>=NET.cap)$('wr-start-btn').classList.add('show');break;
-    case 'action': // 2v2
-      if(G2H.turn===seat&&G2H.phase==='play')hostApplyMove(seat,data);break;
-    case 'play1': // 1v1 online: client (seat 1) plays a tile
-      if(G&&G.mode==='host'&&G.turn==='a'&&G.phase==='play')hostApply1(data.tile,data.side);break;
+    case 'action': // 2v2 — validation + any needed hand re-sync handled inside
+      hostApplyMove(seat,data);break;
+    case 'play1': // 1v1 online: client (seat 1) plays a tile (guards live in hostApply1)
+      hostApply1(data.tile,data.side);break;
   }
 }
 function onFromHost(data){
@@ -1148,6 +1151,7 @@ function g2AutoPassIfStuck(){
   },950);
 }
 function hostApplyMove(seat,data){
+  if(!G2H||!G2H.hands)return; // no active 2v2 game — ignore stray actions
   // A rejected client play means the client already removed the tile optimistically;
   // push its authoritative hand back so it can't desync. (seat 0 = host, never optimistic.)
   const resync=()=>{if(seat!==0)sendTo(seat,{type:'resync_hand',tiles:G2H.hands[seat]})};

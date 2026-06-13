@@ -250,6 +250,7 @@ body{
   <div class="st-logo">🁣</div>
   <div class="st-title">Dominoes</div>
   <div class="st-sub">Pick a game mode</div>
+  <button class="pf-open-btn" onclick="openProfile()"><span class="pf-open-av" id="pf-open-av">👤</span><span id="pf-open-name">Set up profile</span></button>
   <div class="mode-cards">
     <button class="mode-card ai" onclick="startMenu1v1()">
       <span class="mc-icon">🤖</span><span class="mc-label">1v1 vs AI</span><span class="mc-sub">Play solo vs computer</span>
@@ -428,6 +429,21 @@ body{
   <button class="fab" id="chat-btn" title="Quick chat" onclick="toggleChatMenu(event)">💬</button>
 </div>
 
+<!-- ═══ PROFILE ═══ -->
+<div class="overlay" id="pf">
+  <div class="ov-card pf-card">
+    <div class="sb-h">👤 Your Profile</div>
+    <div class="pf-avatar" id="pf-avatar" onclick="document.getElementById('pf-file').click()" title="Tap to choose a picture"><span>📷</span></div>
+    <input type="file" id="pf-file" accept="image/*" style="display:none" onchange="onProfilePic(event)">
+    <div class="pf-hint">Tap the circle to add a photo</div>
+    <input id="pf-name" class="lb-input" placeholder="Your name…" maxlength="16" style="margin-bottom:16px">
+    <div class="ov-btns">
+      <button class="ov-btn gold" onclick="saveProfileFromUI()">Save</button>
+      <button class="ov-btn ghost" onclick="closeProfile()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ SCOREBOARD ═══ -->
 <div class="overlay" id="sb">
   <div class="ov-card sb-card">
@@ -453,6 +469,17 @@ body{
 .chat-opt:hover{background:var(--c5);border-color:var(--c2);transform:translateX(3px)}
 .chat-opt:active{transform:scale(.97)}
 .chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.2rem;padding:8px 16px;border:4px solid var(--c2);border-radius:14px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:72vw;text-align:center;box-shadow:0 0 22px rgba(0,245,212,.5)}
+/* ── PROFILE ── */
+.av,.side-av{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
+.pf-open-btn{position:relative;z-index:1;display:flex;align-items:center;gap:10px;background:rgba(45,27,78,.7);border:3px solid var(--c2);border-radius:9999px;padding:5px 18px 5px 5px;color:#fff;font-family:var(--font-head);font-weight:800;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.pf-open-btn:hover{transform:scale(1.05);box-shadow:0 0 20px rgba(0,245,212,.5)}
+.pf-open-btn:active{transform:scale(.97)}
+.pf-open-av{width:34px;height:34px;border-radius:50%;background:rgba(13,13,26,.6) center/cover no-repeat;border:2px solid var(--c3);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;overflow:hidden}
+.pf-card{max-width:340px}
+.pf-avatar{width:118px;height:118px;border-radius:50%;margin:4px auto 6px;border:4px solid var(--c3);background:rgba(13,13,26,.5) center/cover no-repeat;display:flex;align-items:center;justify-content:center;font-size:2.6rem;cursor:pointer;box-shadow:0 0 22px rgba(255,230,0,.35);transition:transform .15s;overflow:hidden}
+.pf-avatar:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(255,230,0,.55)}
+.pf-hint{font-size:.64rem;color:var(--txt-d);margin:0 0 14px;font-weight:600}
+.wr-av{width:22px;height:22px;border-radius:50%;background:center/cover no-repeat;border:2px solid var(--c2);flex-shrink:0}
 /* ── SCORE BUMP + TURN FLASH + TILE/DEAL ANIMS ── */
 .bump{animation:bump .55s ease}
 @keyframes bump{0%{transform:scale(1)}28%{transform:scale(1.45)}100%{transform:scale(1)}}
@@ -730,10 +757,12 @@ function renderScoreboard(){
 // Authoritative on 'ai' and 'host'. Client only renders + sends its plays.
 let scores={p:0,a:0},roundNo=0,G=null,OPP1_NAME='AI';
 function init1v1(){MODE='1v1';scores={p:0,a:0};roundNo=0;history1=[];OPP1_NAME='AI';setup1v1UI(false);$('ov').classList.remove('on');showScreen('screen-1v1');start1v1Round()}
-function setup1v1UI(online,oppName,myName){
-  $('av-ai').textContent=online?'👤':'🤖';
+function setup1v1UI(online,oppName,myNm){
   $('ai-name').textContent=online?(oppName||'Opponent'):'AI Player';
-  $('p-name').textContent=online?(myName||'You'):'You';
+  $('p-name').textContent=online?(myNm||profileName()||'You'):(profileName()||'You');
+  setAvatarEl('av-p',profileAvatar(),'😎');
+  if(online){const oppSeat=(typeof NET!=='undefined'&&NET.seat===0)?1:0;setAvatarEl('av-ai',(NET.avatars&&NET.avatars[oppSeat])||'','👤')}
+  else setAvatarEl('av-ai','','🤖');
 }
 function start1v1Round(){
   roundNo++;
@@ -927,14 +956,14 @@ function r1Ctrl(){/* controls removed — draw & pass are automatic */}
 <script>
 // ═══ PEERJS NETWORKING ═══
 const PPREFIX='dom2v2-';
-let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1,cap:4,mode:'2v2'};
-function netDestroy(){if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),count:1,cap:4,mode:'2v2'}}
+let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'};
+function netDestroy(){if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'}}
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[~~(Math.random()*c.length)]).join('')}
-function myName(){return ($('lb-name').value.trim()||'Player').slice(0,16)}
+function myName(){return (($('lb-name')&&$('lb-name').value.trim())||profileName()||'Player').slice(0,16)}
 function createRoom(){
   const code=genCode();
   NET.mode=ONLINE_MODE;NET.cap=ONLINE_MODE==='1v1'?2:4;
-  NET.roomCode=code;NET.role='host';NET.seat=0;NET.players=Array(4).fill('');NET.players[0]=myName();NET.count=1;
+  NET.roomCode=code;NET.role='host';NET.seat=0;NET.players=Array(4).fill('');NET.players[0]=myName();NET.avatars=Array(4).fill('');NET.avatars[0]=profileAvatar();NET.count=1;
   showScreen('screen-waiting');
   $('wr-code-box').style.display='block';$('wr-code').textContent=code;
   $('wr-start-btn').style.display='';$('wr-start-btn').classList.remove('show');
@@ -973,7 +1002,7 @@ function joinRoom(){
   NET.peer=new Peer({debug:0});
   NET.peer.on('open',()=>{
     const conn=NET.peer.connect(PPREFIX+code,{reliable:true});NET.conns[0]=conn;
-    conn.on('open',()=>{conn.send({type:'join',name:myName()});showScreen('screen-waiting');$('wr-code-box').style.display='none';$('wr-title').textContent='Joined!';$('wr-sub').textContent='Waiting for the host to start…';$('wr-start-btn').style.display='none';updateWR()});
+    conn.on('open',()=>{conn.send({type:'join',name:myName(),avatar:profileAvatar()});showScreen('screen-waiting');$('wr-code-box').style.display='none';$('wr-title').textContent='Joined!';$('wr-sub').textContent='Waiting for the host to start…';$('wr-start-btn').style.display='none';updateWR()});
     conn.on('data',data=>onFromHost(data));
     conn.on('close',()=>{toast('Disconnected from host');goLobby()});
   });
@@ -990,9 +1019,9 @@ function sendHost(msg){const c=NET.conns[0];if(c&&c.open)c.send(msg)}
 function onFromClient(seat,data){
   switch(data.type){
     case 'join':
-      NET.players[seat]=data.name;
-      NET.conns[seat].send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap});
-      broadcastAll({type:'players',players:NET.players,count:NET.count});
+      NET.players[seat]=data.name;NET.avatars[seat]=data.avatar||'';
+      NET.conns[seat].send({type:'welcome',seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap});
+      broadcastAll({type:'players',players:NET.players,avatars:NET.avatars,count:NET.count});
       updateWR();if(NET.count>=NET.cap)$('wr-start-btn').classList.add('show');break;
     case 'action': // 2v2 — validation + any needed hand re-sync handled inside
       hostApplyMove(seat,data);break;
@@ -1007,8 +1036,8 @@ function onFromClient(seat,data){
 }
 function onFromHost(data){
   switch(data.type){
-    case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
-    case 'players':NET.players=data.players;NET.count=data.count;updateWR();break;
+    case 'welcome':NET.seat=data.seat;if(data.players)NET.players=data.players;if(data.avatars)NET.avatars=data.avatars;if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
+    case 'players':NET.players=data.players;if(data.avatars)NET.avatars=data.avatars;NET.count=data.count;updateWR();break;
     case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
     case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
@@ -1039,7 +1068,9 @@ function updateWR(){
     else if(cap===4&&my>=0&&i===(my+2)%4)tag=' (Partner)';
     const label=filled?(name+tag):(SEAT_LABELS[i]||('Player '+(i+1)));
     const teamHtml=cap===4?`<div class="wr-tag ${SEAT_TEAMS[i]}">Team ${SEAT_TEAMS[i]}</div>`:'';
-    html+=`<div class="wr-slot"><div class="wr-dot${filled?' on':''}"></div><div class="wr-sname${filled?' on':''}">${label}</div>${teamHtml}</div>`;
+    const av=(NET.avatars&&(NET.avatars[i]||(i===my?profileAvatar():'')))||'';
+    const mark=av?`<div class="wr-av" style="background-image:url('${av}')"></div>`:`<div class="wr-dot${filled?' on':''}"></div>`;
+    html+=`<div class="wr-slot">${mark}<div class="wr-sname${filled?' on':''}">${label}</div>${teamHtml}</div>`;
   }
   $('wr-slots').innerHTML=html;
   const cnt=NET.count;
@@ -1269,6 +1300,10 @@ function g2SetupUI(){
   $('g2-left-team').textContent='Team '+oppTeam;$('g2-left-team').className='team-tag '+oppTeam;
   $('g2-right-team').textContent='Team '+oppTeam;$('g2-right-team').className='team-tag '+oppTeam;
   $('g2-us-lbl').textContent='Team '+myTeam;
+  setAvatarEl('g2-bot-av',(NET.avatars&&NET.avatars[my])||profileAvatar(),'😎');
+  setAvatarEl('g2-top-av',(NET.avatars&&NET.avatars[partner])||'','👤');
+  setAvatarEl('g2-right-av',(NET.avatars&&NET.avatars[rOpp])||'','👤');
+  setAvatarEl('g2-left-av',(NET.avatars&&NET.avatars[lOpp])||'','👤');
 }
 function G2Render(){g2RenderTop();g2RenderBoard();g2RenderHand();g2RenderCtrl();
   if(G2C.lastAct&&G2C.lastAct!==_lastAct2){if(/passed/.test(G2C.lastAct))Sfx.play('pass');_lastAct2=G2C.lastAct}
@@ -1561,6 +1596,71 @@ function quickChat(i){
 }
 // close the menu when clicking anywhere outside the chat bar
 document.addEventListener('click',e=>{const bar=$('chat-bar');if(bar&&!bar.contains(e.target))closeChatMenu()});
+</script>
+
+<script>
+// ═══ PROFILE (name + picture, stored locally) ═══
+let PROFILE={name:'',avatar:''};
+let _pfPic='';
+function loadProfile(){
+  try{const r=localStorage.getItem('dom_profile');PROFILE=r?JSON.parse(r):{name:'',avatar:''}}catch(e){PROFILE={name:'',avatar:''}}
+  if(!PROFILE||typeof PROFILE!=='object')PROFILE={name:'',avatar:''};
+  if(typeof PROFILE.name!=='string')PROFILE.name='';
+  if(typeof PROFILE.avatar!=='string')PROFILE.avatar='';
+}
+function saveProfile(){try{localStorage.setItem('dom_profile',JSON.stringify(PROFILE))}catch(e){}}
+function profileName(){return (PROFILE&&PROFILE.name)?PROFILE.name:''}
+function profileAvatar(){return (PROFILE&&PROFILE.avatar)?PROFILE.avatar:''}
+// Set an avatar element to a picture (data URL) or fall back to an emoji.
+function setAvatarEl(elId,dataUrl,fallback){
+  const el=$(elId);if(!el)return;
+  if(dataUrl){el.textContent='';el.style.backgroundImage=`url("${dataUrl}")`}
+  else{el.style.backgroundImage='';el.textContent=fallback||'👤'}
+}
+function applyProfileToMenu(){
+  setAvatarEl('pf-open-av',profileAvatar(),'👤');
+  const n=$('pf-open-name');if(n)n.textContent=profileName()||'Set up profile';
+}
+function openProfile(){
+  loadProfile();_pfPic=PROFILE.avatar||'';
+  if($('pf-name'))$('pf-name').value=PROFILE.name||'';
+  setAvatarEl('pf-avatar',_pfPic,'📷');
+  $('pf').classList.add('on');
+}
+function closeProfile(){$('pf').classList.remove('on')}
+// Read the chosen image, crop-to-square and downscale so it stays small in storage / over the wire.
+function onProfilePic(e){
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(!/^image\//.test(f.type)){toast('Please choose an image file');return}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const S=200,c=document.createElement('canvas');c.width=S;c.height=S;
+      const cx=c.getContext('2d');
+      const scale=Math.max(S/img.width,S/img.height),w=img.width*scale,h=img.height*scale;
+      cx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+      try{_pfPic=c.toDataURL('image/jpeg',0.82)}catch(err){toast('Could not process that image');return}
+      setAvatarEl('pf-avatar',_pfPic,'📷');
+    };
+    img.onerror=()=>toast('Could not load that image');
+    img.src=reader.result;
+  };
+  reader.onerror=()=>toast('Could not read that file');
+  reader.readAsDataURL(f);
+  e.target.value=''; // allow re-selecting the same file later
+}
+function saveProfileFromUI(){
+  PROFILE.name=(($('pf-name')&&$('pf-name').value.trim())||'').slice(0,16);
+  PROFILE.avatar=_pfPic||'';
+  saveProfile();applyProfileToMenu();
+  if($('lb-name'))$('lb-name').value=PROFILE.name;
+  closeProfile();
+  toast(PROFILE.name?('Profile saved · '+PROFILE.name):'Profile saved');
+}
+// startup
+loadProfile();applyProfileToMenu();
+if($('lb-name')&&PROFILE.name)$('lb-name').value=PROFILE.name;
 </script>
 </body>
 </html>

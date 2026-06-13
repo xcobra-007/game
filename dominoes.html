@@ -620,19 +620,9 @@ function fitChain(chainId,scrollId){
   const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
   const natW=chain.scrollWidth,natH=chain.scrollHeight;
   if(natW<=0||natH<=0||availW<=0||availH<=0)return;
+  // Always scale the whole run to fit on screen — never scroll left/right to see tiles.
   const fit=Math.min(availW/natW,availH/natH,1);
-  const MIN=0.55; // below this the tiles get too small to read — scroll instead
-  if(fit>=MIN){
-    if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
-  }else{
-    // Too long to show readably: scale only to fit height, then scroll horizontally.
-    const hs=Math.min(availH/natH,1);
-    if(hs<1){chain.style.transform=`scale(${hs})`;chain.style.transformOrigin='left center'}
-    scroll.style.overflowX='auto';scroll.style.justifyContent='flex-start';
-    // transform shrinks the visuals but not the layout width, so target the scaled
-    // right edge (natW*hs) rather than scrollWidth to avoid scrolling into blank space.
-    requestAnimationFrame(()=>{scroll.scrollLeft=Math.max(0,natW*hs-scroll.clientWidth)});
-  }
+  if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
 }
 // Show a "PASS" (or other) stamp centered over an element (e.g. an avatar)
 function flashStamp(anchorId,text,color){

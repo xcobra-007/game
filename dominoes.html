@@ -702,8 +702,8 @@ const Sfx=(function(){
     src.connect(bp).connect(g).connect(c.destination);src.start(t0);
   }
   const lib={
-    // firm clack of a tile snapping onto the line, with a tiny settle tap
-    place:()=>{woodKnock({vol:0.55,bright:2200});woodKnock({vol:0.16,bright:1700,pitch:0.9,when:0.05})},
+    // minimal: one quiet, short wooden tick
+    place:()=>woodKnock({vol:0.2,bright:2300,ring:0.04}),
     // slide a tile out of the boneyard, then a light tap as it lands
     draw:()=>{woodSlide(0.16);woodKnock({vol:0.3,bright:2000,when:0.11})},
     // knocking on the table — exactly how real players pass: a dull double knuckle-knock

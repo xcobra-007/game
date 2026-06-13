@@ -869,7 +869,7 @@ function onFromHost(data){
     case 'deal':G2C.myTiles=[...data.tiles];G2C.scores={...data.scores};G2C.round=data.round;if(data.scores&&data.scores.A===0&&data.scores.B===0)history2=[];_deal2=true;break;
     case 'state':g2ClientApply(data.s);break;
     case 'tile_drawn':G2C.myTiles.push(data.tile);G2Render();break;
-    case 'show_game':MODE='2v2';g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();break;
+    case 'show_game':$('ov').classList.remove('on');MODE='2v2';g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();break;
     case 'round_over':G2C.scores={...data.scores};G2C.phase='over';showOv2v2(data);break;
   }
 }
@@ -919,6 +919,7 @@ function g2SyncAll(){
   broadcastAll({type:'state',s:st});
 }
 function hostApplyMove(seat,data){
+  if(G2H.turn!==seat||G2H.phase!=='play')return;
   const{action,tile,side}=data;
   if(action==='play'){
     const idx=G2H.hands[seat].findIndex(([a,b])=>tile&&a===tile[0]&&b===tile[1]);
@@ -976,7 +977,7 @@ function g2PlayIdx(idx,side){
   if(G2C.L!==-1&&!tileFits(t,side==='left'?G2C.L:G2C.R))return false;
   const msg={type:'action',action:'play',tile:t,side};
   if(NET.role==='host')hostApplyMove(0,msg);
-  else{G2C.sel=null;sendHost(msg)}
+  else{G2C.sel=null;G2C.myTiles.splice(idx,1);sendHost(msg);G2Render()}
   return true;
 }
 function g2Pass(){

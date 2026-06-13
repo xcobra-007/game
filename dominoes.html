@@ -791,7 +791,8 @@ function renderScoreboard(){
 // 'p' = me (this device), 'a' = opponent. G.mode: 'ai' | 'host' | 'client'.
 // Authoritative on 'ai' and 'host'. Client only renders + sends its plays.
 let scores={p:0,a:0},roundNo=0,G=null,OPP1_NAME='AI';
-function init1v1(){MODE='1v1';scores={p:0,a:0};roundNo=0;history1=[];OPP1_NAME='AI';setup1v1UI(false);$('ov').classList.remove('on');showScreen('screen-1v1');start1v1Round()}
+let next1First=null; // 'p'|'a': who starts the NEXT round (round winner, or last placer on a blocked round). null = first round, use highest double.
+function init1v1(){MODE='1v1';scores={p:0,a:0};roundNo=0;history1=[];OPP1_NAME='AI';next1First=null;setup1v1UI(false);$('ov').classList.remove('on');showScreen('screen-1v1');start1v1Round()}
 function setup1v1UI(online,oppName,myNm){
   $('ai-name').textContent=online?(oppName||'Opponent'):'AI Player';
   $('p-name').textContent=online?(myNm||profileName()||'You'):(profileName()||'You');
@@ -805,11 +806,13 @@ function start1v1Round(){
   G={mode:'ai',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
   let first='p';
   outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
+  if(next1First==='p'||next1First==='a')first=next1First; // carry-over: winner / last placer of previous round starts
   _deal1=true;render1v1();
   setTimeout(()=>beginTurn1(first),760);
 }
 function next1v1Round(){$('ov').classList.remove('on');start1v1Round()}
 function place1v1(tile,side){
+  if(G)G.lastPlacer=G.turn; // remember who placed the last tile (used for the blocked-round starter rule)
   const[a,b]=tile,dbl=a===b;let obj;
   if(G.L===-1){obj={left:a,right:b,dbl};G.L=a;G.R=b;G.bd.push(obj)}
   else if(side==='left'){const m=G.L,o=a===m?b:a;obj={left:o,right:m,dbl};G.L=o;G.bd.unshift(obj)}
@@ -892,6 +895,7 @@ function playTile1v1(idx,side){
 function checkEnd1(who){const h=who==='p'?G.pH:G.aH;if(h.length===0){endRound1(who);return true}return false}
 function endRound1(winner){
   G.phase='over';G.aiOn=false;
+  next1First=winner; // round winner plays first next round
   const pts=pipSum(winner==='p'?G.aH:G.pH);
   if(winner==='p')scores.p+=pts;else scores.a+=pts;
   recordHist1(winner==='p'?'You':OPP1_NAME,pts);
@@ -903,6 +907,7 @@ function endRound1(winner){
 }
 function endBlocked1(){
   G.phase='over';G.aiOn=false;
+  if(G.lastPlacer==='p'||G.lastPlacer==='a')next1First=G.lastPlacer; // last player to place a tile starts next round
   const pp=pipSum(G.pH),ap=pipSum(G.aH);
   const w=pp<ap?'p':ap<pp?'a':'d';let pts=0;
   if(w==='p'){pts=ap;scores.p+=pts;confetti()}else if(w==='a'){pts=pp;scores.a+=pts}
@@ -1149,7 +1154,7 @@ function hostStartGame(){if(NET.count<NET.cap){toast('Need '+NET.cap+' players t
 function hostDeal1(){
   MODE='1v1';
   const cont=(G&&G.mode==='host');
-  if(!cont){scores={p:0,a:0};roundNo=0;history1=[]}
+  if(!cont){scores={p:0,a:0};roundNo=0;history1=[];next1First=null}
   roundNo++;
   OPP1_NAME=NET.players[1]||'Opponent';
   setup1v1UI(true,OPP1_NAME,NET.players[0]||'You');
@@ -1157,6 +1162,7 @@ function hostDeal1(){
   G={mode:'host',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
   let first='p';
   outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
+  if(next1First==='p'||next1First==='a')first=next1First; // carry-over: winner / last placer of previous round starts
   sendTo(1,{type:'deal1',tiles:G.aH,oppName:NET.players[0]||'Host',selfName:NET.players[1]||'You',
     scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length});
   $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
@@ -1186,7 +1192,7 @@ function hostApply1(tile,side){
   beginTurn1('p');
 }
 function hostNextRound1(){$('ov').classList.remove('on');hostDeal1()}
-function newMatch1Online(){if(G)G.mode='host';scores={p:0,a:0};roundNo=0;history1=[];$('ov').classList.remove('on');hostDeal1()}
+function newMatch1Online(){if(G)G.mode='host';scores={p:0,a:0};roundNo=0;history1=[];next1First=null;$('ov').classList.remove('on');hostDeal1()}
 
 // ── client side (thin renderer; sends only its own plays) ──
 function clientDeal1(d){
@@ -1235,12 +1241,14 @@ function clientRoundOver1(d){
 <script>
 // ═══ 2v2 GAME STATE ═══
 let G2H={},G2C={myTiles:[],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:0,phase:'play',scores:{A:0,B:0},round:0,sel:null,lastAct:''};
+let next2First=null; // seat 0..3 who starts the NEXT round (round winner, or last placer on a blocked round). null = first round, use highest double.
 function hostDeal(){
   const prevScores=G2H.scores||{A:0,B:0};const prevRound=G2H.round||0;
-  MODE='2v2';_lastAct2='';if(prevScores.A===0&&prevScores.B===0)history2=[];
+  MODE='2v2';_lastAct2='';if(prevScores.A===0&&prevScores.B===0){history2=[];next2First=null}
   const deck=shuffle(ALL_TILES); // 4×7=28, all dealt, no boneyard
   G2H={hands:[deck.slice(0,7),deck.slice(7,14),deck.slice(14,21),deck.slice(21,28)],board:[],L:-1,R:-1,turn:0,phase:'play',passes:0,scores:{...prevScores},round:prevRound+1,lastAct:''};
   outer:for(let d=6;d>=0;d--)for(let p=0;p<4;p++)if(G2H.hands[p].some(([a,b])=>a===d&&b===d)){G2H.turn=p;break outer}
+  if(next2First!=null&&next2First>=0&&next2First<4)G2H.turn=next2First; // carry-over: winner / last placer of previous round starts
   for(let s=1;s<=3;s++)sendTo(s,{type:'deal',tiles:G2H.hands[s],scores:G2H.scores,round:G2H.round});
   G2C={myTiles:[...G2H.hands[0]],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:G2H.turn,phase:'play',scores:{...G2H.scores},round:G2H.round,sel:null,lastAct:''};
   g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();
@@ -1290,7 +1298,7 @@ function hostApplyMove(seat,data){
     if(idx===-1){resync();return}
     const t=G2H.hands[seat][idx];
     if(G2H.L!==-1&&!tileFits(t,side==='left'?G2H.L:G2H.R)){resync();return}
-    g2HostPlace(t,side);G2H.hands[seat].splice(idx,1);G2H.passes=0;
+    g2HostPlace(t,side);G2H.hands[seat].splice(idx,1);G2H.passes=0;G2H.lastPlacer=seat;
     G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} played [${t[0]}|${t[1]}]`;
     if(G2H.hands[seat].length===0){g2EndRound(seat);return}
     G2H.turn=(G2H.turn+1)%4;
@@ -1316,6 +1324,7 @@ function g2HostPlace(tile,side){
 // ═══ 2v2 END + ACTIONS ═══
 function g2EndRound(winner){
   G2H.phase='over';
+  next2First=winner; // the player who went out (round winner) starts next round
   const wt=winner%2===0?'A':'B';const oppSeats=wt==='A'?[1,3]:[0,2];
   const pts=oppSeats.reduce((s,x)=>s+pipSum(G2H.hands[x]),0);
   G2H.scores[wt]+=pts;
@@ -1327,6 +1336,7 @@ function g2EndRound(winner){
 }
 function g2EndBlocked(){
   G2H.phase='over';
+  if(G2H.lastPlacer!=null)next2First=G2H.lastPlacer; // last player to place a tile starts next round
   const pA=pipSum(G2H.hands[0])+pipSum(G2H.hands[2]),pB=pipSum(G2H.hands[1])+pipSum(G2H.hands[3]);
   const wt=pA<pB?'A':pB<pA?'B':'D';let pts=0;
   if(wt==='A'){pts=pB;G2H.scores.A+=pts}else if(wt==='B'){pts=pA;G2H.scores.B+=pts}

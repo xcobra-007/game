@@ -480,6 +480,9 @@ body{
 .pf-avatar:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(255,230,0,.55)}
 .pf-hint{font-size:.64rem;color:var(--txt-d);margin:0 0 14px;font-weight:600}
 .wr-av{width:22px;height:22px;border-radius:50%;background:center/cover no-repeat;border:2px solid var(--c2);flex-shrink:0}
+.wr-team-btn{margin-left:6px;flex-shrink:0;font-size:.55rem;font-weight:800;padding:4px 9px;border-radius:9999px;border:2px solid var(--c3);background:rgba(255,230,0,.12);color:var(--c3);cursor:pointer;text-transform:uppercase;letter-spacing:.03em;transition:transform .12s,background .15s}
+.wr-team-btn:hover{background:var(--c3);color:#0D0D1A;transform:scale(1.05)}
+.wr-team-btn:active{transform:scale(.95)}
 /* ── SCORE BUMP + TURN FLASH + TILE/DEAL ANIMS ── */
 .bump{animation:bump .55s ease}
 @keyframes bump{0%{transform:scale(1)}28%{transform:scale(1.45)}100%{transform:scale(1)}}
@@ -971,13 +974,13 @@ function createRoom(){
     let seat=-1;
     for(let s=1;s<NET.cap;s++){if(!NET.conns[s]){seat=s;break}}
     if(seat===-1){conn.close();return} // room full
-    NET.conns[seat]=conn;NET.count=1+Object.keys(NET.conns).length;
-    conn.on('open',()=>conn.send({type:'welcome',seat,players:NET.players,mode:NET.mode,cap:NET.cap}));
-    conn.on('data',data=>onFromClient(seat,data));
+    NET.conns[seat]=conn;conn._seat=seat;NET.count=1+Object.keys(NET.conns).length;
+    conn.on('open',()=>conn.send({type:'welcome',seat:conn._seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap}));
+    conn.on('data',data=>onFromClient(conn._seat,data));
     conn.on('close',()=>{
-      const wasName=NET.players[seat]||'P'+(seat+1);
-      NET.players[seat]='';delete NET.conns[seat];NET.count=1+Object.keys(NET.conns).length;updateWR();
-      broadcastAll({type:'players',players:NET.players,count:NET.count});
+      const s=conn._seat;const wasName=NET.players[s]||'P'+(s+1);
+      NET.players[s]='';NET.avatars[s]='';delete NET.conns[s];NET.count=1+Object.keys(NET.conns).length;updateWR();
+      broadcastAll({type:'players',players:NET.players,avatars:NET.avatars,count:NET.count});
       // A drop while the game screen is up (active play OR round-end overlay) would
       // stall the next round on the missing player, so end the session.
       const inGame1=NET.mode==='1v1'&&$('screen-1v1').style.display!=='none';
@@ -1032,6 +1035,7 @@ function onFromHost(data){
   switch(data.type){
     case 'welcome':NET.seat=data.seat;if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
     case 'players':if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);NET.count=data.count;updateWR();break;
+    case 'reseat':NET.seat=data.seat;updateWR();break;
     case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
     case 'game_aborted':toast((data.who?data.who+' ':'')+'disconnected — game ended');setTimeout(goMenu,1700);break;
     // ── 2v2 ──
@@ -1064,14 +1068,37 @@ function updateWR(){
     const teamHtml=cap===4?`<div class="wr-tag ${SEAT_TEAMS[i]}">Team ${SEAT_TEAMS[i]}</div>`:'';
     const av=(NET.avatars&&(NET.avatars[i]||(i===my?profileAvatar():'')))||'';
     const mark=av?`<div class="wr-av" style="background-image:url('${av}')"></div>`:`<div class="wr-dot${filled?' on':''}"></div>`;
-    html+=`<div class="wr-slot">${mark}<div class="wr-sname${filled?' on':''}">${esc(label)}</div>${teamHtml}</div>`;
+    let actionHtml='';
+    if(NET.role==='host'&&NET.mode==='2v2'&&NET.count>=cap&&filled&&i!==my&&i!==(my+2)%4)actionHtml=`<button class="wr-team-btn" onclick="hostSetPartner(${i})">⇄ Team A</button>`;
+    html+=`<div class="wr-slot">${mark}<div class="wr-sname${filled?' on':''}">${esc(label)}</div>${teamHtml}${actionHtml}</div>`;
   }
   $('wr-slots').innerHTML=html;
   const cnt=NET.count;
   $('wr-count-lbl').textContent=`Players (${cnt} / ${cap})`;
-  $('wr-wait').textContent=cnt<cap?'Waiting for players to join…':'All players connected! Ready to start.';
+  let waitMsg=cnt<cap?'Waiting for players to join…':'All players connected! Ready to start.';
+  if(NET.role==='host'&&NET.mode==='2v2'&&cnt>=cap)waitMsg='Tap "⇄ Team A" on a player to make them your partner.';
+  $('wr-wait').textContent=waitMsg;
   if(NET.role==='host'&&cnt>=cap)$('wr-start-btn').classList.add('show');
 }
+// ── Host team management (2v2): host stays Team A at seat 0; choosing a partner
+// moves that player to seat 2 (Team A) and the previous partner to Team B. ──
+function hostSwapSeats(a,b){
+  if(NET.role!=='host'||a===b)return;
+  if(a<1||a>3||b<1||b>3)return;            // host (seat 0) never moves
+  if($('screen-waiting')&&$('screen-waiting').style.display==='none')return; // lobby only
+  const ca=NET.conns[a],cb=NET.conns[b];
+  NET.conns[a]=cb;NET.conns[b]=ca;
+  if(NET.conns[a])NET.conns[a]._seat=a;
+  if(NET.conns[b])NET.conns[b]._seat=b;
+  const pa=NET.players[a],av=NET.avatars[a];
+  NET.players[a]=NET.players[b];NET.avatars[a]=NET.avatars[b];
+  NET.players[b]=pa;NET.avatars[b]=av;
+  if(NET.conns[a])NET.conns[a].send({type:'reseat',seat:a});
+  if(NET.conns[b])NET.conns[b].send({type:'reseat',seat:b});
+  broadcastAll({type:'players',players:NET.players,avatars:NET.avatars,count:NET.count});
+  updateWR();
+}
+function hostSetPartner(seat){if(NET.role==='host'&&NET.mode==='2v2')hostSwapSeats(seat,(NET.seat+2)%4)}
 function copyCode(){const code=$('wr-code').textContent;if(navigator.clipboard)navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code));else toast('Code: '+code)}
 function hostStartGame(){if(NET.count<NET.cap){toast('Need '+NET.cap+' players to start');return}if(NET.mode==='1v1')hostDeal1();else hostDeal()}
 </script>

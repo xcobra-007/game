@@ -1,0 +1,9 @@
+{
+  "appId": "com.manawij.dominoes",
+  "appName": "دومنة المناويج",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0D0D1A"
+  }
+}

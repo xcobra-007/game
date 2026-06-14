@@ -143,7 +143,8 @@ body{
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px 12px}
 .board-chain{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .2s ease}
-.board-line{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:4px}
+.board-line{display:flex;align-items:center;justify-content:flex-start;gap:4px;flex-shrink:0}
+.board-line.rev{flex-direction:row-reverse}
 /* PASS stamp + draw animations */
 .pass-stamp{position:fixed;transform:translate(-50%,-50%) rotate(-13deg);font-family:var(--font-head);font-weight:900;font-size:2rem;letter-spacing:.04em;padding:5px 16px;border:4px solid currentColor;border-radius:13px;background:rgba(13,13,26,.72);z-index:350;pointer-events:none;text-transform:uppercase;animation:stampPop 1.1s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.5)}
 @keyframes stampPop{0%{opacity:0;transform:translate(-50%,-50%) rotate(-13deg) scale(.3)}22%{opacity:1;transform:translate(-50%,-50%) rotate(-13deg) scale(1.18)}42%{transform:translate(-50%,-50%) rotate(-13deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-92%) rotate(-13deg) scale(1)}}
@@ -596,6 +597,10 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
   .tile.H-lg .half{padding:4px}
   .tile.H-lg .dot{width:7px;height:7px}
   .pip-lbl{font-size:.56rem;padding:1px 6px;min-width:17px}
+  /* smaller board tiles on phones → more per row, flatter L/snake */
+  .tile.B-H{width:86px;height:44px;border-radius:9px}
+  .tile.B-V{width:44px;height:86px;border-radius:9px}
+  .tile.B-H .dot,.tile.B-V .dot{width:6px;height:6px}
 
   /* ── 2v2: narrower side panels = more board room ── */
   .side-panel{width:54px;padding:8px 2px}
@@ -746,30 +751,40 @@ function renderReveal(heading,groups){
 function renderChain(bd,chainId,scrollId){
   const chain=$(chainId);if(!chain)return;
   if(!bd||!bd.length){chain.innerHTML='<div class="board-ph">🎲 Drag a tile here to start!</div>';chain.style.transform='';return}
-  const tiles=bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,t.dbl)).join('');
-  chain.innerHTML=`<div class="board-line">${tiles}</div>`;
+  const scroll=$(scrollId);
+  const html=bd.map(t=>buildTile(t.left,t.right,'brd',t.fresh,false)); // all horizontal for a tidy run
   chain.style.transform='';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>fitChain(chainId,scrollId)));
+  // 1st pass: render a hidden single row to measure tile width.
+  chain.innerHTML='<div class="board-line" style="visibility:hidden">'+html.join('')+'</div>';
+  requestAnimationFrame(()=>{
+    const tileEl=chain.querySelector('.tile');
+    const tw=tileEl?tileEl.getBoundingClientRect().width:122;
+    const gap=4;
+    const avail=(((scroll&&scroll.clientWidth)||chain.clientWidth)||320)-16;
+    const perRow=Math.max(1,Math.floor((avail+gap)/(tw+gap)));
+    const rowW=perRow*tw+(perRow-1)*gap;
+    // 2nd pass: lay the run out as an L / serpentine — each row turns and runs the
+    // opposite way, so it fits the width with no left/right scrolling.
+    let rows='';
+    for(let i=0;i<html.length;i+=perRow){
+      const rev=(((i/perRow)|0)%2===1);
+      rows+='<div class="board-line'+(rev?' rev':'')+'" style="width:'+rowW+'px">'+html.slice(i,i+perRow).join('')+'</div>';
+    }
+    chain.innerHTML=rows;
+    requestAnimationFrame(()=>fitChain(chainId,scrollId));
+  });
 }
 function fitChain(chainId,scrollId){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
-  const line=chain.querySelector('.board-line');
-  if(!line){chain.style.transform='';return}
-  // reset before measuring
-  line.style.transform='';line.style.position='';line.style.left='';line.style.top='';line.style.width='';
-  chain.style.transform='';chain.style.width='';chain.style.height='';chain.style.position='';
-  scroll.style.overflowX='hidden';scroll.style.overflowY='hidden';scroll.style.justifyContent='center';scroll.scrollLeft=0;
+  chain.style.transform='';
+  scroll.style.overflow='hidden';scroll.style.justifyContent='center';scroll.scrollLeft=0;
   const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
-  if(availW<=0||availH<=0)return;
-  // Wrap the run to the available width so it NEVER needs left/right scrolling,
-  // then scale the whole (possibly multi-row) block down only if it's taller than
-  // the board area. Keeps tiles readable without any horizontal scrolling.
-  line.style.width=availW+'px';
-  const natH=line.scrollHeight;
-  if(natH<=0)return;
-  const scale=Math.min(availH/natH,1);
-  if(scale<1){line.style.transformOrigin='center center';line.style.transform=`scale(${scale})`}
+  const natW=chain.scrollWidth,natH=chain.scrollHeight;
+  if(natW<=0||natH<=0||availW<=0||availH<=0)return;
+  // Scale the whole (multi-row) block to fit — never scroll.
+  const fit=Math.min(availW/natW,availH/natH,1);
+  if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
 }
 // Append a stamp element and center it on the anchor rect, but CLAMP it so the
 // whole stamp stays on-screen (stamps are translate(-50%,-50%) via their animation).

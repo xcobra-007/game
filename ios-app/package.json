@@ -1,0 +1,18 @@
+{
+  "name": "manawij-dominoes-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iOS (Capacitor) wrapper for the دومنة المناويج dominoes game",
+  "scripts": {
+    "sync-web": "node scripts/sync-web.js",
+    "prepare-ios": "npm run sync-web && npx cap sync ios",
+    "open-ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.1",
+    "@capacitor/ios": "^6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1"
+  }
+}

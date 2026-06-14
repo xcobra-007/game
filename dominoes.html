@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Dominoes 🎲</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -638,6 +638,23 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
 }
 </style>
 
+<style>
+/* ════════════════════════════════════════════════
+   iOS NOTCH / HOME-INDICATOR SAFE AREAS
+   (env() resolves to 0 where there's no inset — e.g. Android — so these are
+   no-ops there and only add spacing on devices that actually need it.)
+   ════════════════════════════════════════════════ */
+.panel.top{padding-top:calc(9px + env(safe-area-inset-top))}
+.hand-wrap{padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+.ctrl{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.fab-bar{bottom:calc(10px + env(safe-area-inset-bottom));right:calc(10px + env(safe-area-inset-right))}
+.chat-bar{bottom:calc(10px + env(safe-area-inset-bottom));left:calc(10px + env(safe-area-inset-left))}
+@media (max-width:600px){
+  .fab-bar{bottom:calc(8px + env(safe-area-inset-bottom));right:calc(8px + env(safe-area-inset-right))}
+  .chat-bar{bottom:calc(8px + env(safe-area-inset-bottom));left:calc(8px + env(safe-area-inset-left))}
+}
+</style>
+
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 'use strict';
@@ -646,6 +663,9 @@ const ALL_TILES=[];
 for(let a=0;a<=6;a++)for(let b=a;b<=6;b++)ALL_TILES.push([a,b]);
 const DOTS={0:[],1:[[1,1]],2:[[0,2],[2,0]],3:[[0,2],[1,1],[2,0]],4:[[0,0],[0,2],[2,0],[2,2]],5:[[0,0],[0,2],[1,1],[2,0],[2,2]],6:[[0,0],[1,0],[2,0],[0,2],[1,2],[2,2]]};
 const $=id=>document.getElementById(id);
+// True only on pure-touch devices (phones/tablets with no mouse) — used to turn
+// off the native HTML5 drag there so it can't fight with the custom touch-drag ghost.
+const TOUCH_DEVICE=(typeof window!=='undefined'&&window.matchMedia)?(window.matchMedia('(pointer: coarse)').matches&&!window.matchMedia('(any-pointer: fine)').matches):(typeof window!=='undefined'&&'ontouchstart' in window);
 // Escape untrusted text (player names, etc.) before putting it into innerHTML.
 function esc(s){return (''+(s==null?'':s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 // Accept an avatar only if it's a bounded data:image URL — blocks CSS/HTML injection via the avatar field.
@@ -1100,7 +1120,7 @@ function r1Hands(){
     }
     const itemCls=(_deal1?'hand-item deal':'hand-item')+(tile===G._justDrawn?' just-drawn':'');
     const itemStyle=_deal1?` style="animation-delay:${i*55}ms"`:'';
-    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="true" ondragstart="P1.onDragStart(event,${i})" ondragend="P1.onDragEnd()" ondragover="P1.onHandOver(event,${i})" ondragleave="P1.onHandLeave(event)" ondrop="P1.onHandDrop(event,${i})" ontouchstart="P1.onTouchStart(event,${i})" ontouchmove="P1.onTouchMove(event)" ontouchend="P1.onTouchEnd(event)" onclick="P1.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
+    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="${TOUCH_DEVICE?'false':'true'}" ondragstart="P1.onDragStart(event,${i})" ondragend="P1.onDragEnd()" ondragover="P1.onHandOver(event,${i})" ondragleave="P1.onHandLeave(event)" ondrop="P1.onHandDrop(event,${i})" ontouchstart="P1.onTouchStart(event,${i})" ontouchmove="P1.onTouchMove(event)" ontouchend="P1.onTouchEnd(event)" ontouchcancel="P1.onTouchCancel(event)" onclick="P1.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
   }).join('');
   _deal1=false;
 }
@@ -1556,7 +1576,7 @@ function g2RenderHand(){
     }
     const itemCls=_deal2?'hand-item deal':'hand-item';
     const itemStyle=_deal2?` style="animation-delay:${i*55}ms"`:'';
-    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="true" ondragstart="P2.onDragStart(event,${i})" ondragend="P2.onDragEnd()" ondragover="P2.onHandOver(event,${i})" ondragleave="P2.onHandLeave(event)" ondrop="P2.onHandDrop(event,${i})" ontouchstart="P2.onTouchStart(event,${i})" ontouchmove="P2.onTouchMove(event)" ontouchend="P2.onTouchEnd(event)" onclick="P2.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
+    return `<div class="${itemCls}" data-i="${i}" data-key="${a}-${b}" draggable="${TOUCH_DEVICE?'false':'true'}" ondragstart="P2.onDragStart(event,${i})" ondragend="P2.onDragEnd()" ondragover="P2.onHandOver(event,${i})" ondragleave="P2.onHandLeave(event)" ondrop="P2.onHandDrop(event,${i})" ontouchstart="P2.onTouchStart(event,${i})" ontouchmove="P2.onTouchMove(event)" ontouchend="P2.onTouchEnd(event)" ontouchcancel="P2.onTouchCancel(event)" onclick="P2.onTap(${i})"${itemStyle}>${buildTile(a,b,'hand',false,false,cls,'')}<div class="pip-lbl">${a+b}</div></div>`;
   }).join('');
   _deal2=false;
 }
@@ -1692,8 +1712,17 @@ function makePlacement(ctx){
     }
     ctx.toggleSel(idx);
   }
+  // Touch interrupted by the OS (incoming call, notification, system edge-gesture,
+  // extra finger): touchend never fires, so clean up here — otherwise the tile
+  // stays half-faded and the floating ghost is left stuck on screen.
+  function onTouchCancel(){
+    if(touchIdx==null)return;
+    const ghost=el('ghost');ghost.innerHTML='';ghost.style.cssText='position:fixed;top:-999px;left:-999px';
+    const h=hand();if(h)h.querySelectorAll('.tile').forEach(t=>t.style.opacity='');
+    clearIns();clearHL();touchIdx=null;
+  }
   function onTap(i){if(justTouch)return;if(!ctx.canPlay())return;ctx.toggleSel(i)}
-  return{onDragStart,onDragEnd,onBoardDragOver,onBoardDragLeave,onBoardDrop,onBoardClick,onHandOver,onHandLeave,onHandDrop,onTouchStart,onTouchMove,onTouchEnd,onTap};
+  return{onDragStart,onDragEnd,onBoardDragOver,onBoardDragLeave,onBoardDrop,onBoardClick,onHandOver,onHandLeave,onHandDrop,onTouchStart,onTouchMove,onTouchEnd,onTouchCancel,onTap};
 }
 </script>
 
@@ -1858,6 +1887,28 @@ function saveProfileFromUI(){
 // startup
 loadProfile();applyProfileToMenu();
 if($('lb-name')&&PROFILE.name)$('lb-name').value=PROFILE.name;
+
+// ═══ ANDROID HARDWARE BACK ═══
+// Called from the native Android wrapper (MainActivity.onBackPressed). Returns
+// true if we handled the press (closed an overlay / returned to the menu); false
+// means "nothing left to undo" so the OS may exit the app. The game is a single
+// page with no browser history, so without this Back would quit instantly even
+// from the middle of a game.
+window.onAndroidBack=function(){
+  const isOn=id=>{const e=document.getElementById(id);return !!e&&e.classList.contains('on')};
+  // 1) Dismiss any open overlay / popup first.
+  if(isOn('pf')){closeProfile();return true}
+  if(isOn('sb')){closeScoreboard();return true}
+  if(isOn('chat-menu')){closeChatMenu();return true}
+  // 2) Already on the main menu with nothing open → let the OS exit.
+  const menu=document.getElementById('screen-menu');
+  if(menu&&menu.style.display!=='none')return false;
+  // 3) Otherwise we're in a lobby / waiting room / game (or round-end overlay):
+  //    close the overlay and return to the menu (netDestroy cleans up any room).
+  const ov=document.getElementById('ov');if(ov)ov.classList.remove('on');
+  goMenu();
+  return true;
+};
 </script>
 </body>
 </html>

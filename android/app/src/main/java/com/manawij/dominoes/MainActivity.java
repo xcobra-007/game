@@ -43,13 +43,23 @@ public class MainActivity extends Activity {
         web.loadUrl("file:///android_asset/dominoes.html");
     }
 
-    // Use the in-page history for the hardware back button when possible.
+    // Hand the hardware Back button to the in-page screen logic first. The game is
+    // a single HTML page (screens are toggled in JS, no browser history), so
+    // canGoBack() is always false and the old code quit the app instantly even
+    // mid-game. window.onAndroidBack() closes overlays / returns to the menu and
+    // only returns false (→ let the OS exit) when we're already on the main menu.
     @Override
     public void onBackPressed() {
-        if (web != null && web.canGoBack()) {
-            web.goBack();
-        } else {
+        if (web == null) {
             super.onBackPressed();
+            return;
         }
+        web.evaluateJavascript(
+                "(window.onAndroidBack && window.onAndroidBack()) ? '1' : '0'",
+                value -> {
+                    if (!"1".equals(value)) {
+                        runOnUiThread(() -> MainActivity.super.onBackPressed());
+                    }
+                });
     }
 }

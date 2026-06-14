@@ -1394,6 +1394,7 @@ function hostApply1(tile,side){
   const idx=G.aH.findIndex(t=>t[0]===tile[0]&&t[1]===tile[1]);
   if(idx===-1){resync();return}
   const t=G.aH[idx];
+  if(G.L===-1&&forcedMismatch(G.forcedOpen,t)){resync();return} // authoritative forced-open check
   if(G.L!==-1&&!tileFits(t,side==='left'?G.L:G.R)){resync();return}
   place1v1(t,side);G.aH.splice(idx,1);G.passes=0;
   hostBroadcast1();

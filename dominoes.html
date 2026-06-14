@@ -468,7 +468,7 @@ body{
 .chat-opt{padding:9px 14px;border-radius:10px;border:2px solid var(--c5);background:rgba(13,13,26,.5);color:#fff;font-family:var(--font-body);font-weight:700;font-size:.95rem;cursor:pointer;text-align:right;direction:rtl;transition:transform .12s,background .15s,border-color .15s}
 .chat-opt:hover{background:var(--c5);border-color:var(--c2);transform:translateX(3px)}
 .chat-opt:active{transform:scale(.97)}
-.chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.85rem;padding:13px 26px;border:4px solid var(--c2);border-radius:16px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:84vw;text-align:center;box-shadow:0 0 26px rgba(0,245,212,.55)}
+.chat-stamp{position:fixed;font-family:var(--font-head);font-weight:800;font-size:1.85rem;padding:13px 26px;border:4px solid var(--c2);border-radius:16px;background:rgba(13,13,26,.9);color:var(--c2);z-index:351;pointer-events:none;animation:stampPop 1.9s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.55);max-width:84vw;text-align:center;overflow-wrap:anywhere;line-height:1.2;box-shadow:0 0 26px rgba(0,245,212,.55)}
 /* ── PROFILE ── */
 .av,.side-av{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
 .pf-open-btn{position:relative;z-index:1;display:flex;align-items:center;gap:10px;background:rgba(45,27,78,.7);border:3px solid var(--c2);border-radius:9999px;padding:5px 18px 5px 5px;color:#fff;font-family:var(--font-head);font-weight:800;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;transition:transform .15s,box-shadow .15s}
@@ -598,6 +598,7 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
   .fab-bar{bottom:8px;right:8px;gap:6px}
   .chat-bar{bottom:8px;left:8px}
   .chat-opt{font-size:.85rem;padding:8px 12px}
+  .chat-stamp{font-size:1.15rem;padding:10px 16px;max-width:92vw;border-width:3px}
 
   /* ── OVERLAYS / SCOREBOARD: fit small screens ── */
   .ov-card{padding:24px 18px;border-width:5px;box-shadow:0 0 28px rgba(255,58,242,.4),6px 6px 0 var(--c1),12px 12px 0 var(--c2)}
@@ -732,14 +733,28 @@ function fitChain(chainId,scrollId){
   const fit=Math.min(availW/natW,availH/natH,1);
   if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
 }
+// Append a stamp element and center it on the anchor rect, but CLAMP it so the
+// whole stamp stays on-screen (stamps are translate(-50%,-50%) via their animation).
+// Without this, a long message over an edge avatar overflowed off-screen.
+function placeStampEl(el,r,lifeMs){
+  el.style.left='0px';el.style.top='0px';el.style.visibility='hidden';
+  document.body.appendChild(el);
+  const w=el.offsetWidth,h=el.offsetHeight,m=8;
+  const vw=window.innerWidth,vh=window.innerHeight;
+  let cx=r.left+r.width/2,cy=r.top+r.height/2;
+  cx=Math.max(m+w/2,Math.min(vw-m-w/2,cx));
+  cy=Math.max(m+h*0.95,Math.min(vh-m-h/2,cy)); // headroom for the upward float at the end
+  el.style.left=cx+'px';el.style.top=cy+'px';el.style.visibility='';
+  setTimeout(()=>el.remove(),lifeMs||1150);
+}
 // Show a "PASS" (or other) stamp centered over an element (e.g. an avatar)
 function flashStamp(anchorId,text,color){
   const a=$(anchorId);if(!a)return;
   const r=a.getBoundingClientRect();
+  if(r.width===0&&r.height===0)return;
   const el=document.createElement('div');el.className='pass-stamp';el.textContent=text;
-  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
   if(color)el.style.color=color;
-  document.body.appendChild(el);setTimeout(()=>el.remove(),1150);
+  placeStampEl(el,r,1150);
 }
 // ═══ SHARED: TOAST & CONFETTI ═══
 let _toastTimer=null;
@@ -1763,8 +1778,7 @@ function flashChat(anchorId,text){
   const r=a.getBoundingClientRect();
   if(r.width===0&&r.height===0)return; // anchor not visible
   const el=document.createElement('div');el.className='chat-stamp';el.textContent=text;
-  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
-  document.body.appendChild(el);setTimeout(()=>el.remove(),1900);
+  placeStampEl(el,r,1900);
 }
 function quickChat(i){
   const text=CHAT_MSGS[i];if(text==null)return;

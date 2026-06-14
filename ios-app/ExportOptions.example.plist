@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Copy this file to "ExportOptions.plist" and fill in your Team ID.
+      The real ExportOptions.plist is gitignored because it is per-developer.
+
+      method options:
+        development  - install on your own registered devices
+        ad-hoc       - install on a fixed list of registered devices (beta testers)
+        app-store    - upload to App Store Connect / TestFlight
+        enterprise   - in-house distribution (Apple Enterprise Program only)
+    -->
+    <key>method</key>
+    <string>development</string>
+
+    <!-- Your 10-character Apple Developer Team ID.
+         Find it in Xcode > Settings > Accounts (select your team), or at
+         https://developer.apple.com/account (Membership details). -->
+    <key>teamID</key>
+    <string>YOUR_TEAM_ID</string>
+
+    <!-- Let Xcode manage certificates/profiles automatically. -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>compileBitcode</key>
+    <false/>
+</dict>
+</plist>

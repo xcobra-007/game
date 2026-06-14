@@ -663,7 +663,12 @@ function showScreen(id){
   const cb=$('chat-bar');if(cb)cb.style.display=(id==='screen-1v1'||id==='screen-2v2')?'flex':'none';
   if(typeof closeChatMenu==='function')closeChatMenu();
 }
-function goMenu(){netDestroy();$('ov').classList.remove('on');showScreen('screen-menu')}
+function goMenu(){
+  // Stop any in-flight game so pending timers (AI move, auto-draw/pass) can't fire on the menu.
+  if(G)G.phase='over';
+  if(typeof G2H!=='undefined'&&G2H)G2H.phase='over';
+  netDestroy();$('ov').classList.remove('on');showScreen('screen-menu');
+}
 let ONLINE_MODE='2v2';
 function goLobby(mode){
   if(mode)ONLINE_MODE=mode;
@@ -928,7 +933,7 @@ function start1v1Round(){
   outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
   if(next1First==='p'||next1First==='a')first=next1First; // carry-over: winner / last placer of previous round starts
   _deal1=true;render1v1();
-  setTimeout(()=>beginTurn1(first),760);
+  const g=G;setTimeout(()=>{if(G===g)beginTurn1(first)},760);
 }
 function next1v1Round(){$('ov').classList.remove('on');start1v1Round()}
 function place1v1(tile,side){
@@ -951,7 +956,7 @@ function resolveTurn1(who){
   const hand=who==='p'?G.pH:G.aH;
   if(anyValid(hand,G.L,G.R)){
     render1v1();
-    if(who==='a'&&G.mode==='ai')setTimeout(aiPlay1,900);
+    if(who==='a'&&G.mode==='ai'){const g=G;setTimeout(()=>{if(G===g)aiPlay1()},900)}
     // else: human ('p') waits for input, or remote opponent ('a' on host) waits for network
     return;
   }
@@ -967,7 +972,7 @@ function autoDraw1(who,cb){
   pulseBoneyard();
   if(G.mode==='host'){if(who==='a')sendTo(1,{type:'draw1',tile:t});hostBroadcast1()}
   render1v1();
-  setTimeout(()=>{G._justDrawn=null;cb&&cb()},760);
+  const g=G;setTimeout(()=>{if(G!==g)return;G._justDrawn=null;cb&&cb()},760);
 }
 function autoPass1(who){
   G.passes=(G.passes||0)+1;
@@ -976,8 +981,9 @@ function autoPass1(who){
   if(G.mode==='host')broadcastAll({type:'pass1',who});
   render1v1();
   const blocked=G.passes>=2&&G.by.length===0;
+  const g=G;
   setTimeout(()=>{
-    if(!G||G.phase!=='play')return;
+    if(G!==g||!G||G.phase!=='play')return;
     if(blocked){endBlocked1();return}
     beginTurn1(who==='p'?'a':'p');
   },1050);
@@ -1286,7 +1292,7 @@ function hostDeal1(){
   sendTo(1,{type:'deal1',tiles:G.aH,oppName:NET.players[0]||'Host',selfName:NET.players[1]||'You',
     scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length});
   $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
-  setTimeout(()=>beginTurn1(first),900);
+  const g=G;setTimeout(()=>{if(G===g)beginTurn1(first)},900);
 }
 function boardForNet(){return G.bd.map(o=>({left:o.left,right:o.right,dbl:o.dbl}))}
 function hostBroadcast1(){
@@ -1341,7 +1347,7 @@ function clientDraw1(tile){
   if(!G||G.mode!=='client')return;
   G.pH.push([tile[0],tile[1]]);G._justDrawn=G.pH[G.pH.length-1];
   Sfx.play('draw');pulseBoneyard();render1v1();
-  setTimeout(()=>{G._justDrawn=null;render1v1()},760);
+  const g=G;setTimeout(()=>{if(G!==g)return;G._justDrawn=null;render1v1()},760);
 }
 function clientPass1(who){
   // who in authoritative terms: 'a'=client(me)→bottom av-p; 'p'=host(opponent)→top av-ai
@@ -1390,8 +1396,9 @@ function g2AutoPassIfStuck(){
   if(NET.role!=='host'||!G2H||G2H.phase!=='play')return;
   const seat=G2H.turn;
   if(anyValid(G2H.hands[seat]||[],G2H.L,G2H.R))return; // can play — wait for the move
+  const g=G2H;
   setTimeout(()=>{
-    if(NET.role!=='host'||!G2H||G2H.phase!=='play'||G2H.turn!==seat)return;
+    if(G2H!==g||NET.role!=='host'||!G2H||G2H.phase!=='play'||G2H.turn!==seat)return;
     if(anyValid(G2H.hands[seat]||[],G2H.L,G2H.R))return; // state changed — abort
     G2H.passes++;G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} passed`;
     g2FlashPass(seat);

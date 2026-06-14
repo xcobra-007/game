@@ -143,7 +143,7 @@ body{
 .board-area{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
 .board-scroll{width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px 12px}
 .board-chain{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;transform-origin:center center;transition:transform .2s ease}
-.board-line{display:flex;align-items:center;gap:4px}
+.board-line{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:4px}
 /* PASS stamp + draw animations */
 .pass-stamp{position:fixed;transform:translate(-50%,-50%) rotate(-13deg);font-family:var(--font-head);font-weight:900;font-size:2rem;letter-spacing:.04em;padding:5px 16px;border:4px solid currentColor;border-radius:13px;background:rgba(13,13,26,.72);z-index:350;pointer-events:none;text-transform:uppercase;animation:stampPop 1.1s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.5)}
 @keyframes stampPop{0%{opacity:0;transform:translate(-50%,-50%) rotate(-13deg) scale(.3)}22%{opacity:1;transform:translate(-50%,-50%) rotate(-13deg) scale(1.18)}42%{transform:translate(-50%,-50%) rotate(-13deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-92%) rotate(-13deg) scale(1)}}
@@ -756,32 +756,20 @@ function fitChain(chainId,scrollId){
   if(!chain||!scroll)return;
   const line=chain.querySelector('.board-line');
   if(!line){chain.style.transform='';return}
-  // reset to measure the natural (unscaled) size
-  line.style.transform='';line.style.position='';line.style.left='';line.style.top='';
-  chain.style.transform='';chain.style.width='';chain.style.height='';chain.style.position='relative';
+  // reset before measuring
+  line.style.transform='';line.style.position='';line.style.left='';line.style.top='';line.style.width='';
+  chain.style.transform='';chain.style.width='';chain.style.height='';chain.style.position='';
+  scroll.style.overflowX='hidden';scroll.style.overflowY='hidden';scroll.style.justifyContent='center';scroll.scrollLeft=0;
   const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
-  const natW=line.scrollWidth,natH=line.scrollHeight;
-  if(natW<=0||natH<=0||availW<=0||availH<=0)return;
-  // Scale to fit the HEIGHT so tiles stay as large/readable as the board allows
-  // (never upscaling past natural size). If the run is then wider than the view,
-  // scroll horizontally and keep the latest tile in sight — instead of shrinking
-  // the whole board into an unreadable thumbnail on a phone.
+  if(availW<=0||availH<=0)return;
+  // Wrap the run to the available width so it NEVER needs left/right scrolling,
+  // then scale the whole (possibly multi-row) block down only if it's taller than
+  // the board area. Keeps tiles readable without any horizontal scrolling.
+  line.style.width=availW+'px';
+  const natH=line.scrollHeight;
+  if(natH<=0)return;
   const scale=Math.min(availH/natH,1);
-  const scaledW=natW*scale,scaledH=natH*scale;
-  const needScroll=scaledW>availW+1;
-  if(scale<1){
-    line.style.transformOrigin='top left';line.style.transform=`scale(${scale})`;
-    line.style.position='absolute';line.style.left='0';line.style.top='0';
-  }
-  chain.style.width=scaledW+'px';chain.style.height=scaledH+'px';
-  scroll.style.overflowX=needScroll?'auto':'hidden';
-  scroll.style.overflowY='hidden';
-  scroll.style.justifyContent=needScroll?'flex-start':'center';
-  if(needScroll){
-    const fresh=line.querySelector('.tile.fresh');
-    if(fresh){const cx=(fresh.offsetLeft+fresh.offsetWidth/2)*scale;scroll.scrollLeft=Math.max(0,cx-scroll.clientWidth/2)}
-    // else: keep the current scroll position (avoid jumping after a tile settles)
-  }else scroll.scrollLeft=0;
+  if(scale<1){line.style.transformOrigin='center center';line.style.transform=`scale(${scale})`}
 }
 // Append a stamp element and center it on the anchor rect, but CLAMP it so the
 // whole stamp stays on-screen (stamps are translate(-50%,-50%) via their animation).

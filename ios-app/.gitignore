@@ -4,5 +4,11 @@ node_modules/
 # Auto-synced from ../dominoes.html by `npm run sync-web`
 www/index.html
 
+# Build output (archives + exported .ipa)
+build/
+
+# Per-developer signing config (contains your Team ID) — use the .example template
+ExportOptions.plist
+
 # macOS
 .DS_Store

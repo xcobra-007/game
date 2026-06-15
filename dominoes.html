@@ -85,17 +85,31 @@ body{
 .spec-tot b{color:var(--c3);font-family:var(--font-head);font-size:1.1rem}
 .spec-banner{margin:4px auto 16px;background:rgba(13,13,26,.82);border:4px solid var(--c3);border-radius:16px;padding:12px 26px;font-family:var(--font-head);font-weight:900;font-size:1.1rem;color:var(--c3);text-align:center;max-width:90%;box-shadow:0 0 24px rgba(255,230,0,.45)}
 /* ── "ملص" SHUTOUT SLAM ── */
-.mels-stamp{position:fixed;z-index:360;pointer-events:none;font-family:'Lalezar','Rakkas',var(--font-accent),cursive;font-weight:900;font-size:clamp(4.5rem,24vw,12rem);line-height:1;color:var(--c3);text-shadow:5px 5px 0 var(--c1),10px 10px 0 var(--c5),0 0 46px rgba(255,230,0,.75);transform:translate(-50%,-50%) rotate(-9deg);animation:melsSlam 2.3s cubic-bezier(.2,1.35,.3,1) forwards}
+.mels-stamp{position:fixed;z-index:360;pointer-events:none;font-family:'Lalezar','Rakkas',var(--font-accent),cursive;font-weight:900;font-size:clamp(4.5rem,24vw,12rem);line-height:1;color:var(--c3);text-shadow:5px 5px 0 var(--c1),10px 10px 0 var(--c5),0 0 46px rgba(255,230,0,.75);transform:translate(-50%,-50%) rotate(-9deg);animation:melsSlam 3s cubic-bezier(.2,1.35,.3,1) forwards}
 @keyframes melsSlam{
-  0%{opacity:0;transform:translate(-50%,-50%) rotate(-9deg) scale(4.2)}
-  16%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(.9)}
-  28%{transform:translate(-50%,-50%) rotate(-9deg) scale(1.1)}
-  40%{transform:translate(-50%,-50%) rotate(-9deg) scale(1)}
-  82%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(1)}
-  100%{opacity:0;transform:translate(-50%,-58%) rotate(-9deg) scale(1.08)}
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(-9deg) scale(4.4)}
+  10%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(.84)}
+  17%{transform:translate(-50%,-50%) rotate(-9deg) scale(1.2)}   /* first bounce */
+  24%{transform:translate(-50%,-50%) rotate(-9deg) scale(.94)}
+  31%{transform:translate(-50%,-50%) rotate(-9deg) scale(1.12)}  /* second bounce */
+  38%{transform:translate(-50%,-50%) rotate(-9deg) scale(.98)}
+  45%{transform:translate(-50%,-50%) rotate(-9deg) scale(1)}     /* settle */
+  88%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-60%) rotate(-9deg) scale(1.08)}
 }
-.mels-shake{animation:melsShake .6s ease}
-@keyframes melsShake{0%,100%{transform:translate(0,0)}15%{transform:translate(-8px,5px)}30%{transform:translate(9px,-5px)}45%{transform:translate(-6px,-4px)}60%{transform:translate(6px,4px)}75%{transform:translate(-4px,2px)}}
+/* full-screen quake on the slam */
+.mels-quake{animation:melsQuake .8s cubic-bezier(.36,.07,.19,.97)}
+@keyframes melsQuake{
+  0%,100%{transform:translate(0,0)}
+  8%{transform:translate(-15px,9px)}
+  18%{transform:translate(16px,-10px)}
+  28%{transform:translate(-13px,11px)}
+  38%{transform:translate(14px,-8px)}
+  50%{transform:translate(-10px,6px)}
+  62%{transform:translate(8px,-5px)}
+  74%{transform:translate(-5px,3px)}
+  86%{transform:translate(4px,-2px)}
+}
 </style>
 </head>
 <body>
@@ -967,6 +981,25 @@ const Sfx=(function(){
     const g=c.createGain();g.gain.value=(vol||0.16);
     src.connect(bp).connect(g).connect(c.destination);src.start(t0);
   }
+  // big "smash" — a loud broadband crash, a low boom that drops in pitch, and a
+  // sharp mid crack on the attack. Used for the ملص shutout slam.
+  function smash(){
+    const c=ac();if(!c)return;const t0=c.currentTime;
+    // 1) broadband crash (noise burst through a closing low-pass)
+    const n=Math.floor(c.sampleRate*0.5),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.2);
+    const src=c.createBufferSource();src.buffer=buf;
+    const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.setValueAtTime(5200,t0);lp.frequency.exponentialRampToValueAtTime(420,t0+0.45);
+    const ng=c.createGain();ng.gain.setValueAtTime(0.85,t0);ng.gain.exponentialRampToValueAtTime(0.0001,t0+0.5);
+    src.connect(lp).connect(ng).connect(c.destination);src.start(t0);
+    // 2) low boom dropping in pitch
+    const o=c.createOscillator(),g=c.createGain();o.type='sine';
+    o.frequency.setValueAtTime(150,t0);o.frequency.exponentialRampToValueAtTime(45,t0+0.4);
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.9,t0+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.55);
+    o.connect(g).connect(c.destination);o.start(t0);o.stop(t0+0.6);
+    // 3) sharp crack on the attack
+    woodKnock({vol:0.6,bright:3200,pitch:1,ring:0.08});
+  }
   const lib={
     // real recorded domino tile click
     place:()=>playPlace(0.9),
@@ -983,7 +1016,9 @@ const Sfx=(function(){
     // lose: a heavy, dull thud of a tile dropped flat
     lose:()=>{woodKnock({vol:0.5,bright:680,pitch:0.6,partials:[[170,1],[400,0.4],[760,0.18]],ring:0.13});woodKnock({vol:0.32,bright:600,pitch:0.55,partials:[[150,1],[360,0.3]],ring:0.14,when:0.18})},
     // tie: two neutral medium knocks
-    draw_game:()=>{woodKnock({vol:0.4,bright:1400,pitch:0.85});woodKnock({vol:0.4,bright:1400,pitch:0.85,when:0.22})}
+    draw_game:()=>{woodKnock({vol:0.4,bright:1400,pitch:0.85});woodKnock({vol:0.4,bright:1400,pitch:0.85,when:0.22})},
+    // shutout slam
+    smash:()=>smash()
   };
   return {
     play(name){if(muted)return;try{const c=ac();if(c&&c.state==='suspended')c.resume();loadPlace();(lib[name]||function(){})()}catch(e){}},
@@ -1995,26 +2030,29 @@ function g2RenderCtrl(){
 // still on zero (lost every round), a giant stamp drops on the table and every
 // tile on the board scatters off. Runs on every device (players + spectators).
 function melsHit(chainId,areaId){
+  // capture the board centre BEFORE the screen starts shaking
+  const area=$(areaId);
+  const r=area&&area.getBoundingClientRect?area.getBoundingClientRect():{left:0,top:0,width:window.innerWidth,height:window.innerHeight};
   const chain=$(chainId);
   if(chain){
     chain.querySelectorAll('.tile').forEach((t,i)=>{
       const dx=(Math.random()*2-1)*Math.max(320,window.innerWidth*0.55);
       const dy=(-0.25-Math.random())*Math.max(280,window.innerHeight*0.5);
       const rot=(Math.random()*2-1)*600;
-      t.style.transition='transform .9s cubic-bezier(.25,.85,.3,1),opacity .9s ease';
+      t.style.transition='transform 1s cubic-bezier(.25,.85,.3,1),opacity 1s ease';
       t.style.transitionDelay=(i*18)+'ms';
       t.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg)`;
       t.style.opacity='0';
     });
   }
-  const area=$(areaId);
-  if(area&&area.classList){area.classList.remove('mels-shake');void area.offsetWidth;area.classList.add('mels-shake');setTimeout(()=>area.classList.remove('mels-shake'),650);}
-  const r=area&&area.getBoundingClientRect?area.getBoundingClientRect():{left:0,top:0,width:window.innerWidth,height:window.innerHeight};
+  // shake the whole game screen
+  const screen=$(areaId==='spec-board-area'?'screen-spectate':'screen-2v2');
+  if(screen&&screen.classList){screen.classList.remove('mels-quake');void screen.offsetWidth;screen.classList.add('mels-quake');setTimeout(()=>screen.classList.remove('mels-quake'),850);}
   const el=document.createElement('div');el.className='mels-stamp';el.textContent='ملص';
   el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(),2300);
-  try{Sfx.play('lose')}catch(e){}
+  setTimeout(()=>el.remove(),3000);
+  try{Sfx.play('smash')}catch(e){}
 }
 function showOv2v2(rd){
   ttDisarm();
@@ -2040,7 +2078,7 @@ function showOv2v2(rd){
   ]);
   // Shutout ("ملص"): match won while the losing team never scored.
   const skunk=rd.matchWinner&&(rd.scores[rd.matchWinner==='A'?'B':'A']||0)===0;
-  if(skunk){melsHit('g2-b-chain','g2-board-area');setTimeout(()=>$('ov').classList.add('on'),1700);}
+  if(skunk){melsHit('g2-b-chain','g2-board-area');setTimeout(()=>$('ov').classList.add('on'),3000);}
   else $('ov').classList.add('on');
 }
 </script>

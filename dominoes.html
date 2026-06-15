@@ -57,6 +57,33 @@ body{
 .mc-icon{font-size:2.9rem;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
 .mc-label{font-size:1.3rem;font-weight:900;text-transform:uppercase;letter-spacing:.02em}
 .mc-sub{font-size:.68rem;opacity:.82;font-weight:700;font-family:var(--font-body);text-transform:uppercase;letter-spacing:.08em}
+/* ── SETTINGS CHIPS ── */
+.set-card{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;background:rgba(45,27,78,.6);border:3px solid var(--c2);border-radius:16px;padding:10px 16px;margin-top:6px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:8px}
+.set-row:first-of-type{margin-top:4px}
+.set-lbl{font-size:.72rem;font-weight:800;color:var(--c2);text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-head)}
+.set-chips{display:flex;gap:6px;flex-wrap:wrap}
+.set-chip{padding:6px 13px;border-radius:9999px;border:2px solid var(--c5);background:rgba(13,13,26,.5);color:rgba(255,255,255,.7);font-weight:800;font-size:.78rem;font-family:var(--font-head);cursor:pointer;transition:transform .12s,background .15s,border-color .15s,color .15s}
+.set-chip:hover{transform:scale(1.06);border-color:var(--c2)}
+.set-chip:active{transform:scale(.95)}
+.set-chip.on{background:linear-gradient(90deg,var(--c1),var(--c5));color:#fff;border-color:var(--c3);box-shadow:0 0 14px rgba(255,58,242,.5)}
+/* ── TURN-TIMER COUNTDOWN CHIP ── */
+.tt-chip{display:none;align-items:center;gap:6px;background:rgba(0,245,212,.16);border:2px solid var(--c2);border-radius:9999px;padding:3px 10px;font-weight:900;font-size:.72rem;color:var(--c2);font-family:var(--font-head)}
+.tt-chip::before{content:'⏱'}
+.tt-chip.low{background:rgba(255,107,53,.22);border-color:var(--c4);color:var(--c4);animation:ttpulse .6s ease infinite}
+.tt-num{min-width:14px;text-align:center}
+.tt-bar{width:40px;height:5px;border-radius:9999px;background:rgba(255,255,255,.16);overflow:hidden}
+.tt-bar-fill{display:block;height:100%;width:100%;background:currentColor;transition:width .2s linear;border-radius:9999px}
+@keyframes ttpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+/* ── SPECTATOR VIEW ── */
+.spec-players{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start;padding:10px 12px;flex-shrink:0}
+.spec-pc{background:rgba(45,27,78,.7);border:3px solid var(--c5);border-radius:14px;padding:8px 14px;text-align:center;min-width:96px;transition:box-shadow .25s,transform .25s}
+.spec-pc.on{border-color:var(--c3);box-shadow:0 0 16px rgba(255,230,0,.55);transform:translateY(-3px)}
+.spec-pn{font-weight:800;font-family:var(--font-head);font-size:.9rem;color:#fff;text-transform:uppercase;margin-top:4px}
+.spec-cnt{font-size:.66rem;color:var(--c2);font-weight:700;margin-top:3px}
+.spec-tot{width:100%;text-align:center;color:#fff;font-weight:700;font-size:.9rem;margin-top:2px}
+.spec-tot b{color:var(--c3);font-family:var(--font-head);font-size:1.1rem}
+.spec-banner{margin:4px auto 16px;background:rgba(13,13,26,.82);border:4px solid var(--c3);border-radius:16px;padding:12px 26px;font-family:var(--font-head);font-weight:900;font-size:1.1rem;color:var(--c3);text-align:center;max-width:90%;box-shadow:0 0 24px rgba(255,230,0,.45)}
 </style>
 </head>
 <body>
@@ -251,6 +278,7 @@ body{
   <div class="st-title" dir="rtl" style="letter-spacing:normal;font-family:'Lalezar',cursive">دومنة المناويج</div>
   <div class="st-sub">Pick a game mode</div>
   <button class="pf-open-btn" onclick="openProfile()"><span class="pf-open-av" id="pf-open-av">👤</span><span id="pf-open-name">Set up profile</span></button>
+  <button class="pf-open-btn" onclick="openStats()" style="border-color:var(--c3)"><span class="pf-open-av">📊</span><span>My Stats</span></button>
   <div class="mode-cards">
     <button class="mode-card ai" onclick="startMenu1v1()">
       <span class="mc-icon">🤖</span><span class="mc-label" dir="rtl" style="font-family:'Changa',sans-serif;font-weight:800;letter-spacing:normal">انيج اخت البوت</span><span class="mc-sub">Play solo vs computer</span>
@@ -262,6 +290,15 @@ body{
       <span class="mc-icon">👥</span><span class="mc-label" dir="rtl" style="font-family:'Changa',sans-serif;font-weight:800;letter-spacing:normal">اكو زلم؟</span><span class="mc-sub">Teams of two</span>
     </button>
   </div>
+  <div class="set-card" style="position:relative;z-index:1">
+    <span class="set-lbl">🎯 First to</span>
+    <div class="set-chips">
+      <button class="set-chip" data-chip-target="50" onclick="setTarget(50)">50</button>
+      <button class="set-chip" data-chip-target="100" onclick="setTarget(100)">100</button>
+      <button class="set-chip" data-chip-target="150" onclick="setTarget(150)">150</button>
+      <button class="set-chip" data-chip-target="200" onclick="setTarget(200)">200</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ LOBBY ═══ -->
@@ -269,6 +306,21 @@ body{
   <div class="scr-title" id="lb-mode-title" style="font-size:1.9rem;font-weight:900;color:#fff">🎮 2v2 Online</div>
   <div style="color:var(--txt-d);font-size:.85rem" id="lb-mode-sub">2 teams of 2 · everyone on their own device</div>
   <div class="lb-card"><h3>Your Name</h3><input id="lb-name" class="lb-input" placeholder="Enter your name…" maxlength="16"></div>
+  <div class="lb-card" id="lb-settings">
+    <h3>⚙️ Room Settings <span style="opacity:.6;text-transform:none;letter-spacing:0">(host sets these)</span></h3>
+    <div class="set-row"><span class="set-lbl">🎯 First to</span><div class="set-chips">
+      <button class="set-chip" data-chip-target="50" onclick="setTarget(50)">50</button>
+      <button class="set-chip" data-chip-target="100" onclick="setTarget(100)">100</button>
+      <button class="set-chip" data-chip-target="150" onclick="setTarget(150)">150</button>
+      <button class="set-chip" data-chip-target="200" onclick="setTarget(200)">200</button>
+    </div></div>
+    <div class="set-row"><span class="set-lbl">⏱ Turn timer</span><div class="set-chips">
+      <button class="set-chip" data-chip-timer="0" onclick="setTimerOpt(0)">Off</button>
+      <button class="set-chip" data-chip-timer="15" onclick="setTimerOpt(15)">15s</button>
+      <button class="set-chip" data-chip-timer="30" onclick="setTimerOpt(30)">30s</button>
+      <button class="set-chip" data-chip-timer="60" onclick="setTimerOpt(60)">60s</button>
+    </div></div>
+  </div>
   <div class="lb-card"><h3>🏠 Create a Room</h3><button class="lb-btn gold" onclick="createRoom()">Create Room</button></div>
   <div style="color:var(--txt-d);font-size:.8rem">— or —</div>
   <div class="lb-card"><h3>🚪 Join a Room</h3><input id="lb-join-code" class="lb-code-input" placeholder="ROOM CODE" maxlength="6"><button class="lb-btn cyan" onclick="joinRoom()">Join Room</button></div>
@@ -306,6 +358,7 @@ body{
   <!-- Info bar -->
   <div class="info-bar">
     <div class="rnd-chip">Round <span id="rnd">1</span></div>
+    <span class="tt-chip" id="tt-1v1" style="display:none"><span class="tt-num">30</span><span class="tt-bar"><span class="tt-bar-fill"></span></span></span>
     <div class="stat" id="stat-msg"></div>
   </div>
   <!-- Board -->
@@ -373,6 +426,7 @@ body{
   <!-- Info bar -->
   <div class="info-bar" style="justify-content:space-between">
     <div class="rnd-chip">Round <span id="g2-rnd-n">1</span></div>
+    <span class="tt-chip" id="tt-2v2" style="display:none"><span class="tt-num">30</span><span class="tt-bar"><span class="tt-bar-fill"></span></span></span>
     <div class="stat" id="g2-stat"></div>
     <div class="sc-badge" style="background:rgba(255,85,85,.12);border-color:rgba(255,85,85,.3)"><div class="sc-v" id="g2-score-them" style="color:var(--red)">0</div><div class="sc-l">Their Team</div></div>
   </div>
@@ -388,6 +442,24 @@ body{
   <div class="ctrl">
     <button class="btn btn-pass" id="g2-bP" onclick="g2Pass()" disabled>⏭ كاعد عالعير</button>
   </div>
+</div>
+
+
+<!-- ═══ SPECTATE (read-only) ═══ -->
+<div id="screen-spectate" style="display:none;flex-direction:column;width:100vw;max-width:1000px;height:100vh;margin:0 auto">
+  <div class="panel top" style="gap:10px">
+    <div class="av">👁</div>
+    <div><div class="pname">Spectating</div><div class="ptiles" id="spec-round">—</div></div>
+    <span class="tt-chip" id="tt-spec" style="display:none;margin-left:10px"><span class="tt-num">30</span><span class="tt-bar"><span class="tt-bar-fill"></span></span></span>
+    <button class="lb-back" style="margin-left:auto" onclick="goMenu()">← Leave</button>
+  </div>
+  <div class="board-outer">
+    <div class="board-area">
+      <div class="board-scroll" id="spec-scroll"><div class="board-chain" id="spec-chain"><div class="board-ph">Waiting for the game…</div></div></div>
+    </div>
+  </div>
+  <div class="spec-players" id="spec-players"></div>
+  <div class="spec-banner" id="spec-banner" style="display:none"></div>
 </div>
 
 
@@ -452,6 +524,18 @@ body{
     <div class="sb-bars" id="sb-bars"></div>
     <div class="sb-tablewrap"><table class="sb-table"><thead id="sb-head"></thead><tbody id="sb-rows"></tbody></table></div>
     <button class="ov-btn ghost" onclick="closeScoreboard()">Close</button>
+  </div>
+</div>
+
+<!-- ═══ MY STATS ═══ -->
+<div class="overlay" id="stats">
+  <div class="ov-card sb-card">
+    <div class="sb-h">📊 My Stats</div>
+    <div id="stats-body"></div>
+    <div class="ov-btns" style="margin-top:16px">
+      <button class="ov-btn ghost" onclick="resetStats()">Reset</button>
+      <button class="ov-btn gold" onclick="closeStats()">Close</button>
+    </div>
   </div>
 </div>
 
@@ -676,10 +760,33 @@ function tileFits([a,b],end){return a===end||b===end}
 function tileValid(tile,L,R){return L===-1||tileFits(tile,L)||tileFits(tile,R)}
 function anyValid(hand,L,R){return hand.some(t=>tileValid(t,L,R))}
 
+// ═══ GAME SETTINGS (host-authoritative; clients adopt the host's values) ═══
+// target = points to win the match; timer = seconds per turn in online games (0 = off).
+const TARGET_OPTS=[50,100,150,200], TIMER_OPTS=[0,15,30,60];
+let GS={target:100,timer:0};
+function loadSettings(){
+  try{const r=JSON.parse(localStorage.getItem('dom_settings')||'{}');
+    if(TARGET_OPTS.includes(r.target))GS.target=r.target;
+    if(TIMER_OPTS.includes(r.timer))GS.timer=r.timer;
+  }catch(e){}
+}
+function saveSettings(){try{localStorage.setItem('dom_settings',JSON.stringify(GS))}catch(e){}}
+function setTarget(v){if(TARGET_OPTS.includes(v)){GS.target=v;saveSettings();renderSettingChips()}}
+function setTimerOpt(v){if(TIMER_OPTS.includes(v)){GS.timer=v;saveSettings();renderSettingChips()}}
+// Re-paint the active state of every settings chip group on screen.
+function renderSettingChips(){
+  document.querySelectorAll('[data-chip-target]').forEach(el=>{
+    el.classList.toggle('on',+el.dataset.chipTarget===GS.target);
+  });
+  document.querySelectorAll('[data-chip-timer]').forEach(el=>{
+    el.classList.toggle('on',+el.dataset.chipTimer===GS.timer);
+  });
+}
+
 // ═══ SCREEN MANAGER ═══
-const SCREENS=['screen-menu','screen-lobby','screen-waiting','screen-1v1','screen-2v2'];
+const SCREENS=['screen-menu','screen-lobby','screen-waiting','screen-1v1','screen-2v2','screen-spectate'];
 function showScreen(id){
-  SCREENS.forEach(s=>$(s).style.display=s===id?'flex':'none');
+  SCREENS.forEach(s=>{const e=$(s);if(e)e.style.display=s===id?'flex':'none'});
   const cb=$('chat-bar');if(cb)cb.style.display=(id==='screen-1v1'||id==='screen-2v2')?'flex':'none';
   if(typeof closeChatMenu==='function')closeChatMenu();
 }
@@ -691,6 +798,7 @@ function goLobby(mode){
   const is1=ONLINE_MODE==='1v1',t=$('lb-mode-title'),s=$('lb-mode-sub');
   if(t)t.textContent=is1?'⚔️ 1v1 Online':'🎮 2v2 Online';
   if(s)s.textContent=is1?'Duel a friend · 2 players on their own devices':'2 teams of 2 · everyone on their own device';
+  renderSettingChips();
   showScreen('screen-lobby');
 }
 function startMenu1v1(){init1v1()}
@@ -906,7 +1014,7 @@ function sbBar(lbl,val,target,color){
   return `<div class="sb-bar-row"><span class="sb-bar-lbl">${lbl}</span><div class="sb-bar-track"><div class="sb-bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="sb-bar-lbl" style="width:34px;text-align:left;color:#fff">${val}</span></div>`;
 }
 function renderScoreboard(){
-  let totals,head,rows,bars;const target=100;
+  let totals,head,rows,bars;const target=GS.target;
   if(MODE==='2v2'){
     const my=(typeof NET!=='undefined'&&NET.seat>=0)?NET.seat:0;const myTeam=my%2===0?'A':'B';
     const A=(G2C&&G2C.scores&&G2C.scores.A)||0,B=(G2C&&G2C.scores&&G2C.scores.B)||0;
@@ -922,6 +1030,47 @@ function renderScoreboard(){
     rows=history1.length?history1.map(h=>`<tr><td>${h.round}</td><td>${esc(h.winner)}</td><td>${h.pts||0}</td><td>${h.p}</td><td>${h.a}</td></tr>`).join(''):`<tr><td colspan="5" class="sb-empty">No rounds played yet</td></tr>`;
   }
   $('sb-totals').innerHTML=totals;$('sb-bars').innerHTML=bars;$('sb-head').innerHTML=head;$('sb-rows').innerHTML=rows;
+}
+
+// ═══ PER-PLAYER STATS (stored locally) ═══
+let STATS={games:0,wins:0,losses:0,streak:0,best:0,byMode:{}};
+function loadStats(){
+  try{const r=JSON.parse(localStorage.getItem('dom_stats')||'null');if(r&&typeof r==='object')STATS=r}catch(e){}
+  STATS.games=STATS.games|0;STATS.wins=STATS.wins|0;STATS.losses=STATS.losses|0;
+  STATS.streak=STATS.streak|0;STATS.best=STATS.best|0;
+  if(!STATS.byMode||typeof STATS.byMode!=='object')STATS.byMode={};
+}
+function saveStats(){try{localStorage.setItem('dom_stats',JSON.stringify(STATS))}catch(e){}}
+// Record one completed MATCH for the local player. mode: 'ai' | '1v1' | '2v2'.
+function recordMatch(win,mode){
+  loadStats();
+  STATS.games++;
+  if(win){STATS.wins++;STATS.streak=(STATS.streak>0?STATS.streak:0)+1;if(STATS.streak>STATS.best)STATS.best=STATS.streak}
+  else{STATS.losses++;STATS.streak=0}
+  const m=STATS.byMode[mode]||(STATS.byMode[mode]={w:0,l:0});
+  if(win)m.w++;else m.l++;
+  saveStats();
+}
+function openStats(){renderStats();$('stats').classList.add('on')}
+function closeStats(){$('stats').classList.remove('on')}
+function resetStats(){STATS={games:0,wins:0,losses:0,streak:0,best:0,byMode:{}};saveStats();renderStats();toast('Stats reset')}
+function renderStats(){
+  loadStats();
+  const wr=STATS.games?Math.round(STATS.wins/STATS.games*100):0;
+  const modeRow=(k,lbl)=>{const m=STATS.byMode[k]||{w:0,l:0};const g=(m.w|0)+(m.l|0);return `<tr><td>${lbl}</td><td>${g}</td><td>${m.w|0}</td><td>${m.l|0}</td></tr>`};
+  $('stats-body').innerHTML=`
+    <div class="sb-totals">
+      <div class="sb-tot"><span class="sb-tot-v">${STATS.games}</span><span class="sb-tot-l">Matches</span></div>
+      <div class="sb-tot"><span class="sb-tot-v" style="color:var(--c2)">${STATS.wins}</span><span class="sb-tot-l">Wins</span></div>
+      <div class="sb-tot"><span class="sb-tot-v" style="color:var(--c4)">${STATS.losses}</span><span class="sb-tot-l">Losses</span></div>
+    </div>
+    <div class="sb-bars">${sbBar('Win rate',wr,100,'linear-gradient(90deg,var(--c1),var(--c2))')}</div>
+    <div class="sb-totals">
+      <div class="sb-tot"><span class="sb-tot-v" style="color:var(--c3)">🔥 ${STATS.streak}</span><span class="sb-tot-l">Win streak</span></div>
+      <div class="sb-tot"><span class="sb-tot-v" style="color:var(--c3)">🏆 ${STATS.best}</span><span class="sb-tot-l">Best streak</span></div>
+    </div>
+    <div class="sb-tablewrap"><table class="sb-table"><thead><tr><th>Mode</th><th>Played</th><th>W</th><th>L</th></tr></thead>
+    <tbody>${modeRow('ai','🤖 vs AI')}${modeRow('1v1','⚔️ 1v1')}${modeRow('2v2','👥 2v2')}</tbody></table></div>`;
 }
 </script>
 
@@ -963,6 +1112,7 @@ function place1v1(tile,side){
 function beginTurn1(who){
   if(!G||G.phase!=='play')return;
   G.turn=who;G.aiOn=(who==='a');G.sel=null;
+  ttDisarm(); // clear the previous turn's timer/countdown
   if(G.mode==='host')hostBroadcast1();
   resolveTurn1(who);
 }
@@ -972,6 +1122,7 @@ function resolveTurn1(who){
   if(anyValid(hand,G.L,G.R)){
     render1v1();
     if(who==='a'&&G.mode==='ai')setTimeout(aiPlay1,900);
+    else if(G.mode==='host'&&GS.timer>0)startTurnTimer1(who); // online: arm the turn clock
     // else: human ('p') waits for input, or remote opponent ('a' on host) waits for network
     return;
   }
@@ -1040,9 +1191,13 @@ function endRound1(winner){
   if(winner==='p')scores.p+=pts;else scores.a+=pts;
   recordHist1(winner==='p'?'You':OPP1_NAME,pts);
   const result=winner==='p'?'win':'lose';
-  const mw=scores.p>=100?'me':scores.a>=100?'opp':null;
+  const mw=scores.p>=GS.target?'me':scores.a>=GS.target?'opp':null;
   if(result==='win')confetti();
-  if(G.mode==='host')sendTo(1,{type:'round_over1',result:winner==='p'?'lose':'win',pts,blocked:false,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+  if(G.mode==='host'){
+    sendTo(1,{type:'round_over1',result:winner==='p'?'lose':'win',pts,blocked:false,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+    const wn=NET.players[winner==='p'?0:1]||(winner==='p'?'Host':'Player 2');
+    specResult(mw?`🏆 ${(NET.players[mw==='me'?0:1])||wn} wins the match!`:`${wn} won the round  +${pts}`);
+  }
   showOv1v1(result,pts,false,G.aH,mw);render1v1();
 }
 function endBlocked1(){
@@ -1053,11 +1208,16 @@ function endBlocked1(){
   if(w==='p'){pts=ap;scores.p+=pts;confetti()}else if(w==='a'){pts=pp;scores.a+=pts}
   recordHist1(w==='p'?'You':w==='a'?OPP1_NAME:'Draw',pts);
   const result=w==='p'?'win':w==='a'?'lose':'draw';
-  const mw=scores.p>=100?'me':scores.a>=100?'opp':null;
-  if(G.mode==='host')sendTo(1,{type:'round_over1',result:w==='p'?'lose':w==='a'?'win':'draw',pts,blocked:true,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+  const mw=scores.p>=GS.target?'me':scores.a>=GS.target?'opp':null;
+  if(G.mode==='host'){
+    sendTo(1,{type:'round_over1',result:w==='p'?'lose':w==='a'?'win':'draw',pts,blocked:true,reveal:G.pH,mw:mw==='me'?'opp':mw==='opp'?'me':null,scores:{p:scores.a,a:scores.p},round:roundNo});
+    const wn=w==='d'?null:(NET.players[w==='p'?0:1]||(w==='p'?'Host':'Player 2'));
+    specResult(w==='d'?'🤝 Blocked — draw':(mw?`🏆 ${(NET.players[mw==='me'?0:1])||wn} wins the match!`:`${wn} won (blocked)  +${pts}`));
+  }
   showOv1v1(result,pts,true,G.aH,mw);render1v1();
 }
 function showOv1v1(result,pts,blocked,revealTiles,mw){
+  ttDisarm();
   const oppN=OPP1_NAME;
   const M={
     win:{e:'🎉',t:'You Win!',s:blocked?'Lowest pips wins!':`+${pts} points!`},
@@ -1065,12 +1225,16 @@ function showOv1v1(result,pts,blocked,revealTiles,mw){
     draw:{e:'🤝',t:"It's a Draw!",s:'Equal pip counts!'}
   };
   if(mw){M.win.e='🏆';M.win.t='You Win the Match!';M.lose.e='💀';M.lose.t=`${oppN} Wins the Match!`}
+  if(mw)recordMatch(mw==='me',(G&&G.mode==='ai')?'ai':'1v1');
   const c=M[result]||M.draw;
   $('ov-em').textContent=c.e;$('ov-ti').textContent=c.t;$('ov-su').textContent=c.s;
   $('ov-l1').textContent='You';$('ov-l2').textContent=oppN;animateCount('ov-s1',scores.p);animateCount('ov-s2',scores.a);
   Sfx.play(result==='win'?'win':result==='draw'?'draw_game':'lose');
   const nb=$('ov-nx');
-  if(G&&G.mode==='client'){nb.textContent=mw?'🔄 New match…':'⏳ Waiting for host…';nb.style.opacity='.5';nb.style.cursor='default';nb.onclick=null}
+  if(G&&G.mode==='client'){
+    if(mw){nb.textContent='🔁 Request Rematch';nb.style.opacity='';nb.style.cursor='';nb.onclick=clientRequestRematch}
+    else{nb.textContent='⏳ Waiting for host…';nb.style.opacity='.5';nb.style.cursor='default';nb.onclick=null}
+  }
   else{
     nb.style.opacity='';nb.style.cursor='';
     if(mw){nb.textContent='🔄 New Game';nb.onclick=(G&&G.mode==='host')?newMatch1Online:init1v1}
@@ -1136,8 +1300,8 @@ function r1Ctrl(){/* controls removed — draw & pass are automatic */}
 <script>
 // ═══ PEERJS NETWORKING ═══
 const PPREFIX='dom2v2-';
-let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'};
-function netDestroy(){if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'}}
+let NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},specs:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'};
+function netDestroy(){if(typeof ttDisarm==='function')ttDisarm();if(NET.peer){try{NET.peer.destroy()}catch(e){}}NET={peer:null,role:null,seat:-1,roomCode:'',conns:{},specs:{},players:Array(4).fill(''),avatars:Array(4).fill(''),count:1,cap:4,mode:'2v2'}}
 function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>c[~~(Math.random()*c.length)]).join('')}
 function myName(){return (($('lb-name')&&$('lb-name').value.trim())||profileName()||'Player').slice(0,16)}
 function createRoom(){
@@ -1156,9 +1320,19 @@ function createRoom(){
     // so a mid-list leave + new join can't collide with / overwrite another seat.
     let seat=-1;
     for(let s=1;s<NET.cap;s++){if(!NET.conns[s]){seat=s;break}}
-    if(seat===-1){conn.close();return} // room full
+    if(seat===-1){ // seats full → admit as a spectator instead of dropping the connection
+      const sid='s'+(NET._specId=(NET._specId||0)+1);
+      NET.specs[sid]=conn;conn._spec=true;conn._sid=sid;
+      conn.on('open',()=>{
+        conn.send({type:'welcome',spectator:true,mode:NET.mode,cap:NET.cap,target:GS.target,timer:GS.timer,players:NET.players});
+        if(specGameInProgress()){conn.send({type:'spec_show',mode:NET.mode});conn.send({type:'spec_state',s:buildSpecState()})}
+      });
+      conn.on('data',data=>onFromSpec(sid,conn,data));
+      conn.on('close',()=>{delete NET.specs[sid]});
+      return;
+    }
     NET.conns[seat]=conn;conn._seat=seat;NET.count=1+Object.keys(NET.conns).length;
-    conn.on('open',()=>conn.send({type:'welcome',seat:conn._seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap}));
+    conn.on('open',()=>conn.send({type:'welcome',seat:conn._seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap,target:GS.target,timer:GS.timer}));
     conn.on('data',data=>onFromClient(conn._seat,data));
     conn.on('close',()=>{
       const s=conn._seat;const wasName=NET.players[s]||'P'+(s+1);
@@ -1191,6 +1365,164 @@ function joinRoom(){
 function broadcastAll(msg){for(let s=1;s<(NET.cap||4);s++){const c=NET.conns[s];if(c&&c.open)c.send(msg)}}
 function sendTo(seat,msg){const c=NET.conns[seat];if(c&&c.open)c.send(msg)}
 function sendHost(msg){const c=NET.conns[0];if(c&&c.open)c.send(msg)}
+// ── Spectators: extra joiners watch a neutral, read-only view of the game ──
+function broadcastSpecs(msg){for(const k in NET.specs){const c=NET.specs[k];if(c&&c.open)c.send(msg)}}
+function hasSpecs(){for(const k in NET.specs){if(NET.specs[k])return true}return false}
+function specGameInProgress(){return $('screen-1v1').style.display!=='none'||$('screen-2v2').style.display!=='none'}
+// Neutral 1v1 view: index 0 = host, 1 = the other player.
+function specState1(){
+  if(!G)return null;
+  return {mode:'1v1',board:boardForNet(),L:G.L,R:G.R,
+    players:[NET.players[0]||'Host',NET.players[1]||'Player 2'],
+    counts:[G.pH.length,G.aH.length],scores:[scores.p,scores.a],
+    turn:(G.turn==='p'?0:(G.turn==='a'?1:-1)),phase:G.phase,round:roundNo,target:GS.target,turnMs:ttRemainMs()};
+}
+function specState2(){
+  if(!G2H||!G2H.hands)return null;
+  return {mode:'2v2',board:G2H.board,
+    players:[0,1,2,3].map(i=>NET.players[i]||('P'+(i+1))),
+    counts:G2H.hands.map(h=>h.length),scores:{A:G2H.scores.A,B:G2H.scores.B},
+    turn:G2H.turn,phase:G2H.phase,round:G2H.round,target:GS.target,turnMs:ttRemainMs()};
+}
+function buildSpecState(){return NET.mode==='1v1'?specState1():specState2()}
+function pushSpec(){if(!hasSpecs())return;const st=buildSpecState();if(st)broadcastSpecs({type:'spec_state',s:st})}
+function specShow(){if(!hasSpecs())return;broadcastSpecs({type:'spec_show',mode:NET.mode});pushSpec()}
+function specResult(text){if(hasSpecs())broadcastSpecs({type:'spec_result',text})}
+function onFromSpec(sid,conn,data){
+  if(!data||typeof data!=='object')return;
+  if(data.type==='join'){conn._name=(''+(data.name||'')).slice(0,24)}
+  // spectators are view-only — all play/action messages are ignored
+}
+// ── Spectator client: render the neutral read-only view ──
+function specEnter(){
+  MODE=NET.mode;showScreen('screen-spectate');
+  const b=$('spec-banner');if(b)b.style.display='none';
+  const c=$('spec-chain');if(c)c.innerHTML='<div class="board-ph">Waiting for the game to start…</div>';
+  const p=$('spec-players');if(p)p.innerHTML='';
+  const r=$('spec-round');if(r)r.textContent='Spectating';
+  toast('👁 You are spectating');
+}
+function specRender(st){
+  if(!st)return;
+  MODE=st.mode||MODE;
+  const r=$('spec-round');if(r)r.textContent='Round '+(st.round||1)+' · First to '+(st.target||100);
+  renderChain((st.board||[]).map(o=>({left:o.left,right:o.right,dbl:o.dbl})),'spec-chain','spec-scroll');
+  let html='';
+  if(st.mode==='2v2'){
+    const teams=['A','B','A','B'];
+    html=(st.players||[]).map((nm,i)=>`<div class="spec-pc${st.turn===i?' on':''}"><div class="team-tag ${teams[i]}">Team ${teams[i]}</div><div class="spec-pn">${esc(nm)}</div><div class="spec-cnt">${st.counts[i]} tiles</div></div>`).join('');
+    html+=`<div class="spec-tot">Team A <b>${st.scores.A}</b> &nbsp;·&nbsp; Team B <b>${st.scores.B}</b></div>`;
+  }else{
+    html=(st.players||[]).map((nm,i)=>`<div class="spec-pc${st.turn===i?' on':''}"><div class="spec-pn">${esc(nm)}</div><div class="spec-cnt">${st.counts[i]} tiles · ${st.scores[i]} pts</div></div>`).join('');
+  }
+  const pe=$('spec-players');if(pe)pe.innerHTML=html;
+  if(st.phase!=='over'){const b=$('spec-banner');if(b)b.style.display='none'}
+  ttClientSync(st.turnMs||0);
+}
+</script>
+
+
+<script>
+// ═══ TURN TIMER (online only; host enforces, everyone sees the countdown) ═══
+// The host arms a timeout whenever a human has a playable turn; on expiry it
+// auto-plays the heaviest legal tile for the staller. A synced countdown chip
+// is shown on every device (driven by the remaining-ms the host broadcasts).
+let TT={handle:null,tick:null,deadline:0,total:0};
+function heaviestTile(arr){let best=arr[0];const sc=t=>t[0]+t[1]+(t[0]===t[1]?5:0);for(const t of arr)if(sc(t)>sc(best))best=t;return best}
+function ttDisarm(){
+  if(TT.handle){clearTimeout(TT.handle);TT.handle=null}
+  if(TT.tick){clearInterval(TT.tick);TT.tick=null}
+  TT.deadline=0;TT.total=0;ttRenderUI();
+}
+function ttArmCountdown(totalMs){ // visual only — runs on host AND clients
+  if(TT.tick){clearInterval(TT.tick);TT.tick=null}
+  if(!(totalMs>0)){TT.deadline=0;TT.total=0;ttRenderUI();return}
+  TT.total=totalMs;TT.deadline=Date.now()+totalMs;ttRenderUI();
+  try{TT.tick=setInterval(ttRenderUI,200)}catch(e){}
+}
+function ttStartHost(ms,cb){ // host: visual countdown + the actual auto-play timeout
+  ttDisarm();
+  if(!(ms>0))return;
+  ttArmCountdown(ms);
+  try{TT.handle=setTimeout(cb,ms)}catch(e){}
+}
+function startTurnTimer1(who){ // 1v1 online host: arm the clock + re-broadcast the deadline
+  ttStartHost(GS.timer*1000,()=>onTurnTimeout1(who));
+  hostBroadcast1();
+}
+function ttRemainMs(){return TT.deadline?Math.max(0,TT.deadline-Date.now()):0}
+function ttRenderUI(){
+  const remain=ttRemainMs();
+  const secs=Math.ceil(remain/1000);
+  const pct=TT.total?Math.max(0,Math.min(100,remain/TT.total*100)):0;
+  ['tt-1v1','tt-2v2','tt-spec'].forEach(id=>{
+    const el=$(id);if(!el)return;
+    if(!TT.deadline){el.style.display='none';return}
+    el.style.display='inline-flex';
+    const num=el.querySelector('.tt-num');if(num)num.textContent=secs;
+    const bar=el.querySelector('.tt-bar-fill');if(bar)bar.style.width=pct+'%';
+    el.classList.toggle('low',secs<=5);
+  });
+  if(TT.deadline&&remain<=0&&TT.tick){clearInterval(TT.tick);TT.tick=null}
+}
+// Clients call this from incoming state to (re)sync their countdown.
+function ttClientSync(turnMs){ if(turnMs>0)ttArmCountdown(turnMs); else ttDisarm(); }
+
+// ── 1v1 online: auto-play for the staller (who = 'p' host | 'a' client) ──
+function onTurnTimeout1(who){
+  if(!G||G.mode!=='host'||G.phase!=='play'||G.turn!==who)return;
+  const hand=who==='p'?G.pH:G.aH;
+  let tile=null,side='right';
+  if(G.L===-1){
+    tile=(G.forceOpen!=null)?hand.find(t=>t[0]===G.forceOpen&&t[1]===G.forceOpen):heaviestTile(hand);
+  }else{
+    const valid=hand.filter(t=>tileValid(t,G.L,G.R));
+    if(!valid.length)return; // no move (engine handles draw/pass) — nothing to force
+    tile=heaviestTile(valid);
+    const cL=tileFits(tile,G.L),cR=tileFits(tile,G.R);
+    side=cL&&!cR?'left':cR&&!cL?'right':(Math.random()<.5?'left':'right');
+  }
+  if(!tile)return;
+  const idx=hand.indexOf(tile);if(idx<0)return;
+  ttDisarm();
+  place1v1(tile,side);hand.splice(idx,1);G.passes=0;
+  toast('⏱ Time! Auto-played for '+(who==='p'?(NET.players[0]||'host'):OPP1_NAME));
+  hostBroadcast1();
+  if(checkEnd1(who))return;
+  beginTurn1(who==='p'?'a':'p');
+}
+// ── 2v2: auto-play for the seat whose turn it is ──
+function onTurnTimeout2(seat){
+  if(NET.role!=='host'||!G2H||G2H.phase!=='play'||G2H.turn!==seat)return;
+  const hand=G2H.hands[seat]||[];
+  let tile=null,side='right';
+  if(G2H.L===-1){
+    tile=(G2H.forceOpen!=null)?hand.find(t=>t[0]===G2H.forceOpen&&t[1]===G2H.forceOpen):heaviestTile(hand);
+  }else{
+    const valid=hand.filter(t=>tileValid(t,G2H.L,G2H.R));
+    if(!valid.length)return; // stuck — g2AutoPassIfStuck handles it
+    tile=heaviestTile(valid);
+    const cL=tileFits(tile,G2H.L),cR=tileFits(tile,G2H.R);
+    side=cL&&!cR?'left':cR&&!cL?'right':(Math.random()<.5?'left':'right');
+  }
+  if(!tile)return;
+  const idx=hand.indexOf(tile);if(idx<0)return;
+  ttDisarm();
+  g2HostPlace(tile,side);hand.splice(idx,1);G2H.passes=0;G2H.lastPlacer=seat;
+  G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} auto-played [${tile[0]}|${tile[1]}]`;
+  toast('⏱ Time! Auto-played for '+(NET.players[seat]||'P'+(seat+1)));
+  if(hand.length===0){g2EndRound(seat);return}
+  G2H.turn=(G2H.turn+1)%4;
+  g2SyncAll();
+}
+// Host: arm the 2v2 turn timer for the current seat (only if it has a real move).
+function g2ArmTurnTimer(){
+  if(NET.role!=='host'||!G2H||G2H.phase!=='play'){ttDisarm();return}
+  if(!(GS.timer>0)){ttDisarm();return}
+  const seat=G2H.turn;
+  if(!anyValid(G2H.hands[seat]||[],G2H.L,G2H.R)){ttDisarm();return}
+  ttStartHost(GS.timer*1000,()=>onTurnTimeout2(seat));
+}
 </script>
 
 
@@ -1200,13 +1532,15 @@ function onFromClient(seat,data){
   switch(data.type){
     case 'join':
       NET.players[seat]=(''+(data.name||'')).slice(0,24);NET.avatars[seat]=cleanAvatar(data.avatar);
-      NET.conns[seat].send({type:'welcome',seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap});
+      NET.conns[seat].send({type:'welcome',seat,players:NET.players,avatars:NET.avatars,mode:NET.mode,cap:NET.cap,target:GS.target,timer:GS.timer});
       broadcastAll({type:'players',players:NET.players,avatars:NET.avatars,count:NET.count});
       updateWR();if(NET.count>=NET.cap)$('wr-start-btn').classList.add('show');break;
     case 'action': // 2v2 — validation + any needed hand re-sync handled inside
       hostApplyMove(seat,data);break;
     case 'play1': // 1v1 online: client (seat 1) plays a tile (guards live in hostApply1)
       hostApply1(data.tile,data.side);break;
+    case 'rematch': // client wants to play again in the same room
+      hostHandleRematch(seat);break;
     case 'chat':{ // a client sent a quick-chat phrase — show it and relay to everyone else
       const txt=(''+(data.text||'')).slice(0,80);
       flashChat(chatAnchorFor(seat),txt);
@@ -1216,7 +1550,12 @@ function onFromClient(seat,data){
 }
 function onFromHost(data){
   switch(data.type){
-    case 'welcome':NET.seat=data.seat;if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}updateWR();break;
+    case 'welcome':
+      if(typeof data.target==='number')GS.target=data.target;if(typeof data.timer==='number')GS.timer=data.timer;
+      if(data.mode){NET.mode=data.mode;NET.cap=data.cap||(data.mode==='1v1'?2:4)}
+      if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));
+      if(data.spectator){NET.role='spectator';NET.seat=-1;specEnter();break}
+      NET.seat=data.seat;if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);updateWR();break;
     case 'players':if(Array.isArray(data.players))NET.players=data.players.map(n=>(''+(n||'')).slice(0,24));if(Array.isArray(data.avatars))NET.avatars=data.avatars.map(cleanAvatar);NET.count=data.count;updateWR();break;
     case 'reseat':NET.seat=data.seat;updateWR();break;
     case 'chat':if(data.seat!==NET.seat)flashChat(chatAnchorFor(data.seat),(''+(data.text||'')).slice(0,80));break;
@@ -1236,6 +1575,10 @@ function onFromHost(data){
     case 'hand1':if(G&&G.mode==='client'){G.pH=(data.tiles||[]).map(t=>[t[0],t[1]]);G.sel=null;render1v1()}break;
     case 'pass1':clientPass1(data.who);break;
     case 'round_over1':clientRoundOver1(data);break;
+    // ── spectator ──
+    case 'spec_show':MODE=data.mode||NET.mode;showScreen('screen-spectate');{const b=$('spec-banner');if(b)b.style.display='none'}break;
+    case 'spec_state':specRender(data.s);break;
+    case 'spec_result':{const b=$('spec-banner');if(b){b.style.display='block';b.textContent=data.text||''}break;}
   }
 }
 const SEAT_LABELS=['Host','Player 2','Player 3','Player 4'];
@@ -1285,6 +1628,24 @@ function hostSwapSeats(a,b){
 function hostSetPartner(seat){if(NET.role==='host'&&NET.mode==='2v2')hostSwapSeats(seat,(NET.seat+2)%4)}
 function copyCode(){const code=$('wr-code').textContent;if(navigator.clipboard)navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code));else toast('Code: '+code)}
 function hostStartGame(){if(NET.count<NET.cap){toast('Need '+NET.cap+' players to start');return}if(NET.mode==='1v1')hostDeal1();else hostDeal()}
+// ── Rematch in the same room (no re-sharing the code) ──
+// A client asks the host to play again; the host re-deals a fresh match for the
+// same connected players. The host's own overlay button does this directly.
+function clientRequestRematch(){
+  if(NET.role!=='client')return;
+  sendHost({type:'rematch'});
+  const nb=$('ov-nx');if(nb){nb.textContent='⏳ Waiting for host…';nb.style.opacity='.5';nb.style.cursor='default';nb.onclick=null}
+  toast('Rematch requested…');
+}
+function hostHandleRematch(seat){
+  if(NET.role!=='host')return;
+  const nm=NET.players[seat]||'A player';
+  if(NET.mode==='1v1'){
+    if(G&&G.mode==='host'&&G.phase==='over'){toast('🔁 '+nm+' wants a rematch!');newMatch1Online()}
+  }else{
+    if(G2H&&G2H.phase==='over'){toast('🔁 '+nm+' wants a rematch!');$('ov').classList.remove('on');G2H.scores={A:0,B:0};G2H.round=0;hostDeal()}
+  }
+}
 </script>
 
 
@@ -1306,6 +1667,7 @@ function hostDeal1(){
   sendTo(1,{type:'deal1',tiles:G.aH,oppName:NET.players[0]||'Host',selfName:NET.players[1]||'You',
     scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length});
   $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
+  specShow();
   setTimeout(()=>beginTurn1(first),900);
 }
 function boardForNet(){return G.bd.map(o=>({left:o.left,right:o.right,dbl:o.dbl}))}
@@ -1313,8 +1675,9 @@ function hostBroadcast1(){
   if(!G||G.mode!=='host')return;
   sendTo(1,{type:'state1',s:{
     board:boardForNet(),L:G.L,R:G.R,byCount:G.by.length,oppCount:G.pH.length,
-    turn:(G.turn==='a'?'p':(G.turn==='p'?'a':null)),phase:G.phase,scores:{p:scores.a,a:scores.p}
+    turn:(G.turn==='a'?'p':(G.turn==='p'?'a':null)),phase:G.phase,scores:{p:scores.a,a:scores.p},turnMs:ttRemainMs()
   }});
+  pushSpec();
 }
 function hostApply1(tile,side){
   if(!G||G.mode!=='host')return;
@@ -1354,6 +1717,7 @@ function clientState1(s){
   G.aH=Array(s.oppCount||0).fill([0,0]);
   G.turn=s.turn;G.aiOn=(s.turn==='a');G.phase=s.phase;
   if(s.scores)scores={p:s.scores.p,a:s.scores.a};
+  ttClientSync(s.turnMs||0);
   if(G.by.length<prevBy)pulseBoneyard();
   render1v1();
 }
@@ -1391,17 +1755,20 @@ function hostDeal(){
   if(next2First!=null&&next2First>=0&&next2First<4)G2H.turn=next2First; // carry-over: winner / last placer of previous round starts
   for(let s=1;s<=3;s++)sendTo(s,{type:'deal',tiles:G2H.hands[s],scores:G2H.scores,round:G2H.round});
   G2C={myTiles:[...G2H.hands[0]],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:G2H.turn,phase:'play',scores:{...G2H.scores},round:G2H.round,sel:null,lastAct:''};
-  g2SetupUI();showScreen('screen-2v2');_deal2=true;G2Render();
+  g2SetupUI();showScreen('screen-2v2');_deal2=true;g2ArmTurnTimer();G2Render();
   broadcastAll({type:'show_game'});broadcastAll({type:'state',s:g2PublicState()});
+  specShow();
 }
-function g2PublicState(){return{board:G2H.board,handCounts:G2H.hands.map(h=>h.length),L:G2H.L,R:G2H.R,turn:G2H.turn,phase:G2H.phase,scores:G2H.scores,round:G2H.round,lastAct:G2H.lastAct}}
-function g2ClientApply(st){G2C.board=st.board;G2C.handCounts=st.handCounts;G2C.L=st.L;G2C.R=st.R;G2C.turn=st.turn;G2C.phase=st.phase;G2C.scores=st.scores;G2C.round=st.round;G2C.lastAct=st.lastAct;G2Render()}
+function g2PublicState(){return{board:G2H.board,handCounts:G2H.hands.map(h=>h.length),L:G2H.L,R:G2H.R,turn:G2H.turn,phase:G2H.phase,scores:G2H.scores,round:G2H.round,lastAct:G2H.lastAct,turnMs:ttRemainMs()}}
+function g2ClientApply(st){G2C.board=st.board;G2C.handCounts=st.handCounts;G2C.L=st.L;G2C.R=st.R;G2C.turn=st.turn;G2C.phase=st.phase;G2C.scores=st.scores;G2C.round=st.round;G2C.lastAct=st.lastAct;ttClientSync(st.turnMs||0);G2Render()}
 function g2SyncAll(){
+  g2ArmTurnTimer(); // set the deadline first so the broadcast carries the remaining time
   const st=g2PublicState();
   G2C.board=G2H.board;G2C.handCounts=G2H.hands.map(h=>h.length);G2C.L=G2H.L;G2C.R=G2H.R;
   G2C.turn=G2H.turn;G2C.phase=G2H.phase;G2C.scores=G2H.scores;G2C.round=G2H.round;G2C.lastAct=G2H.lastAct;
   if(NET.seat===0)G2C.myTiles=[...G2H.hands[0]];G2C.sel=null;G2Render();
   broadcastAll({type:'state',s:st});
+  pushSpec();
   g2AutoPassIfStuck();
 }
 // If the player whose turn it is has no playable tile, the host auto-passes for
@@ -1468,11 +1835,12 @@ function g2EndRound(winner){
   const wt=winner%2===0?'A':'B';const oppSeats=wt==='A'?[1,3]:[0,2];
   const pts=oppSeats.reduce((s,x)=>s+pipSum(G2H.hands[x]),0);
   G2H.scores[wt]+=pts;
-  const mw=G2H.scores.A>=100?'A':G2H.scores.B>=100?'B':null;
+  const mw=G2H.scores.A>=GS.target?'A':G2H.scores.B>=GS.target?'B':null;
   const rd={type:'round_over',winner,winTeam:wt,pts,scores:{...G2H.scores},matchWinner:mw,blocked:false,hands:G2H.hands.map(h=>h.map(t=>[...t]))};
   G2C.scores={...G2H.scores};G2C.phase='over';
   const isMyTeam=(NET.seat%2===0&&wt==='A')||(NET.seat%2===1&&wt==='B');
   if(isMyTeam)confetti();showOv2v2(rd);broadcastAll(rd);
+  specResult(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won the round  +${pts}`);
 }
 function g2EndBlocked(){
   G2H.phase='over';
@@ -1480,11 +1848,12 @@ function g2EndBlocked(){
   const pA=pipSum(G2H.hands[0])+pipSum(G2H.hands[2]),pB=pipSum(G2H.hands[1])+pipSum(G2H.hands[3]);
   const wt=pA<pB?'A':pB<pA?'B':'D';let pts=0;
   if(wt==='A'){pts=pB;G2H.scores.A+=pts}else if(wt==='B'){pts=pA;G2H.scores.B+=pts}
-  const mw=G2H.scores.A>=100?'A':G2H.scores.B>=100?'B':null;
+  const mw=G2H.scores.A>=GS.target?'A':G2H.scores.B>=GS.target?'B':null;
   const rd={type:'round_over',winner:-1,winTeam:wt,pts,scores:{...G2H.scores},matchWinner:mw,blocked:true,hands:G2H.hands.map(h=>h.map(t=>[...t]))};
   G2C.scores={...G2H.scores};G2C.phase='over';
   const isMyTeam=(NET.seat%2===0&&wt==='A')||(NET.seat%2===1&&wt==='B');
   if(isMyTeam&&wt!=='D')confetti();showOv2v2(rd);broadcastAll(rd);
+  specResult(wt==='D'?'🤝 Blocked — draw':(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won (blocked)  +${pts}`));
 }
 function g2PlayIdx(idx,side){
   if(G2C.turn!==NET.seat||G2C.phase!=='play')return false;
@@ -1585,8 +1954,10 @@ function g2RenderCtrl(){
   $('g2-bP').disabled=!(myTurn&&!anyValid(G2C.myTiles,G2C.L,G2C.R));
 }
 function showOv2v2(rd){
+  ttDisarm();
   const my=NET.seat,myTeam=my%2===0?'A':'B',oppTeam=myTeam==='A'?'B':'A';
   const wt=rd.winTeam,won=wt===myTeam,draw=wt==='D';recordHist2(rd);
+  if(rd.matchWinner)recordMatch(won,'2v2');
   let em,title,sub;
   if(draw){em='🤝';title="It's a Draw!";sub='Equal pips — no points scored'}
   else if(won){em=rd.matchWinner?'🏆':'🎉';title=rd.matchWinner?'Your Team Wins the Match!':'Your Team Wins!';sub=rd.blocked?`Lowest pips — Team ${wt} wins`:`+${rd.pts} points!`}
@@ -1596,7 +1967,7 @@ function showOv2v2(rd){
   animateCount('ov-s1',rd.scores[myTeam]);animateCount('ov-s2',rd.scores[oppTeam]);
   Sfx.play(draw?'draw_game':won?'win':'lose');
   const nb=$('ov-nx');
-  if(rd.matchWinner){nb.textContent='🔄 New Match';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{$('ov').classList.remove('on');if(NET.role==='host'){G2H.scores={A:0,B:0};G2H.round=0;hostDeal()}else g2ShowStat('Waiting for host to start…','cyan')}}
+  if(rd.matchWinner){nb.textContent='🔄 New Match';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{if(NET.role==='host'){$('ov').classList.remove('on');G2H.scores={A:0,B:0};G2H.round=0;hostDeal()}else clientRequestRematch()};if(NET.role!=='host')nb.textContent='🔁 Request Rematch'}
   else if(NET.role==='host'){nb.textContent='Next Round ▶';nb.style.opacity='';nb.style.cursor='';nb.onclick=()=>{$('ov').classList.remove('on');hostDeal()}}
   else{nb.textContent='⏳ Waiting for host…';nb.style.opacity='.45';nb.style.cursor='default';nb.onclick=null}
   const lOpp=(my+3)%4,rOpp=(my+1)%4,hands=rd.hands||[];
@@ -1886,6 +2257,8 @@ function saveProfileFromUI(){
 }
 // startup
 loadProfile();applyProfileToMenu();
+loadSettings();renderSettingChips();
+loadStats();
 if($('lb-name')&&PROFILE.name)$('lb-name').value=PROFILE.name;
 
 // ═══ ANDROID HARDWARE BACK ═══
@@ -1899,6 +2272,7 @@ window.onAndroidBack=function(){
   // 1) Dismiss any open overlay / popup first.
   if(isOn('pf')){closeProfile();return true}
   if(isOn('sb')){closeScoreboard();return true}
+  if(isOn('stats')){closeStats();return true}
   if(isOn('chat-menu')){closeChatMenu();return true}
   // 2) Already on the main menu with nothing open → let the OS exit.
   const menu=document.getElementById('screen-menu');

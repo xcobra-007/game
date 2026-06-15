@@ -1104,10 +1104,11 @@ function setup1v1UI(online,oppName,myNm){
 function start1v1Round(){
   roundNo++;
   const deck=shuffle(ALL_TILES);
-  G={mode:'ai',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
-  let first='p';
-  outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
+  G={mode:'ai',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0,forceOpen:null};
+  let first='p',openDbl=-1;
+  outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;openDbl=d;break outer}
   if(next1First==='p'||next1First==='a')first=next1First; // carry-over: winner / last placer of previous round starts
+  else if(openDbl>=0)G.forceOpen=openDbl; // first round: opener must open with the highest double
   _deal1=true;render1v1();
   setTimeout(()=>beginTurn1(first),760);
 }
@@ -1115,7 +1116,7 @@ function next1v1Round(){$('ov').classList.remove('on');start1v1Round()}
 function place1v1(tile,side){
   if(G)G.lastPlacer=G.turn; // remember who placed the last tile (used for the blocked-round starter rule)
   const[a,b]=tile,dbl=a===b;let obj;
-  if(G.L===-1){obj={left:a,right:b,dbl};G.L=a;G.R=b;G.bd.push(obj)}
+  if(G.L===-1){obj={left:a,right:b,dbl};G.L=a;G.R=b;G.bd.push(obj);G.forceOpen=null}
   else if(side==='left'){const m=G.L,o=a===m?b:a;obj={left:o,right:m,dbl};G.L=o;G.bd.unshift(obj)}
   else{const m=G.R,o=a===m?b:a;obj={left:m,right:o,dbl};G.R=o;G.bd.push(obj)}
   obj.fresh=true;setTimeout(()=>{if(obj)obj.fresh=false;r1Board()},400);
@@ -1171,7 +1172,11 @@ function aiPlay1(){
   const valid=G.aH.filter(t=>tileValid(t,G.L,G.R));
   if(!valid.length){resolveTurn1('a');return}
   let best=valid[0];const sc=t=>t[0]+t[1]+(t[0]===t[1]?5:0);
-  for(const t of valid)if(sc(t)>sc(best))best=t;
+  if(G.L===-1&&G.forceOpen!=null){
+    best=G.aH.find(t=>t[0]===G.forceOpen&&t[1]===G.forceOpen)||best; // first round: must open the highest double
+  }else{
+    for(const t of valid)if(sc(t)>sc(best))best=t;
+  }
   let side='right';
   if(G.L!==-1){const cL=tileFits(best,G.L),cR=tileFits(best,G.R);side=cL&&!cR?'left':cR&&!cL?'right':Math.random()<.5?'left':'right'}
   place1v1(best,side);G.aH.splice(G.aH.indexOf(best),1);G.passes=0;
@@ -1182,7 +1187,8 @@ function aiPlay1(){
 function playTile1v1(idx,side){
   if(!G||G.turn!=='p'||G.phase!=='play'||G.aiOn)return false;
   const tile=G.pH[idx];if(!tile)return false;
-  if(G.L!==-1){const end=side==='left'?G.L:G.R;if(!tileFits(tile,end))return false}
+  if(G.L===-1){if(G.forceOpen!=null&&!(tile[0]===G.forceOpen&&tile[1]===G.forceOpen))return false}
+  else{const end=side==='left'?G.L:G.R;if(!tileFits(tile,end))return false}
   if(G.mode==='client'){G.pH.splice(idx,1);G.sel=null;G.turn=null;sendHost({type:'play1',tile,side});render1v1();return true}
   place1v1(tile,side);G.pH.splice(idx,1);G.sel=null;G.passes=0;
   if(G.mode==='host')hostBroadcast1();
@@ -1270,7 +1276,10 @@ function r1Top(){
   if(G.phase!=='play'){el.textContent='';el.className='stat';return}
   if(G.aiOn){el.className='stat cyan thdots';el.textContent=(G.mode==='ai')?'🤖 AI is thinking':('⏳ '+OPP1_NAME+' is playing')}
   else if(G.turn==='p'){
-    if(G.L===-1){el.className='stat gold';el.textContent='🎯 First move — drag any tile onto the table!'}
+    if(G.L===-1){
+      if(G.forceOpen!=null){el.className='stat gold';el.textContent=`🎯 Open with your double [${G.forceOpen}|${G.forceOpen}]!`}
+      else{el.className='stat gold';el.textContent='🎯 First move — drag any tile onto the table!'}
+    }
     else if(G.sel!==null){const t=G.pH[G.sel],vs=r1ValidSides(t);if(vs.length){el.className='stat grn';el.textContent=`✅ [${t[0]}|${t[1]}] selected — drop on the table!`}else{el.className='stat red';el.textContent=`⚠️ [${t[0]}|${t[1]}] can't play — try another tile`}}
     else if(!anyValid(G.pH,G.L,G.R)){el.className='stat cyan thdots';el.textContent=G.by.length>0?'📥 No moves — drawing':'⏭ No moves — كاعد عالعير'}
     else{el.className='stat';el.textContent='🖱 Drag a tile onto the table'}
@@ -1291,7 +1300,11 @@ function r1Hands(){
   $('p-hand').innerHTML=G.pH.map((tile,i)=>{
     const[a,b]=tile;let cls='';
     if(myTurn){
-      if(G.sel===i)cls='sel';
+      if(G.L===-1&&G.forceOpen!=null){
+        const isDbl=a===G.forceOpen&&b===G.forceOpen; // first round: only the highest double may open
+        cls=isDbl?(G.sel===i?'sel':'hi-B'):'dim';
+      }
+      else if(G.sel===i)cls='sel';
       else{const cL=G.L===-1||tileFits(tile,G.L),cR=G.L===-1||tileFits(tile,G.R);if(!cL&&!cR)cls='dim';else if(cL&&cR)cls='hi-B';else cls=cL?'hi-L':'hi-R'}
     }
     const itemCls=(_deal1?'hand-item deal':'hand-item')+(tile===G._justDrawn?' just-drawn':'');
@@ -1672,12 +1685,13 @@ function hostDeal1(){
   OPP1_NAME=NET.players[1]||'Opponent';
   setup1v1UI(true,OPP1_NAME,NET.players[0]||'You');
   const deck=shuffle(ALL_TILES);
-  G={mode:'host',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
-  let first='p';
-  outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;break outer}
+  G={mode:'host',pH:deck.slice(0,7),aH:deck.slice(7,14),by:deck.slice(14),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0,forceOpen:null};
+  let first='p',openDbl=-1;
+  outer:for(let d=6;d>=0;d--)for(const[who,h]of[['p',G.pH],['a',G.aH]])if(h.some(([a,b])=>a===d&&b===d)){first=who;openDbl=d;break outer}
   if(next1First==='p'||next1First==='a')first=next1First; // carry-over: winner / last placer of previous round starts
+  else if(openDbl>=0)G.forceOpen=openDbl; // first round: opener must open with the highest double
   sendTo(1,{type:'deal1',tiles:G.aH,oppName:NET.players[0]||'Host',selfName:NET.players[1]||'You',
-    scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length});
+    scores:{p:scores.a,a:scores.p},round:roundNo,byCount:G.by.length,oppCount:G.pH.length,forceOpen:G.forceOpen});
   $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
   specShow();
   setTimeout(()=>beginTurn1(first),900);
@@ -1700,7 +1714,8 @@ function hostApply1(tile,side){
   const idx=G.aH.findIndex(t=>t[0]===tile[0]&&t[1]===tile[1]);
   if(idx===-1){resync();return}
   const t=G.aH[idx];
-  if(G.L!==-1&&!tileFits(t,side==='left'?G.L:G.R)){resync();return}
+  if(G.L===-1){if(G.forceOpen!=null&&!(t[0]===G.forceOpen&&t[1]===G.forceOpen)){resync();return}}
+  else if(!tileFits(t,side==='left'?G.L:G.R)){resync();return}
   place1v1(t,side);G.aH.splice(idx,1);G.passes=0;
   hostBroadcast1();
   if(checkEnd1('a'))return;
@@ -1717,7 +1732,7 @@ function clientDeal1(d){
   roundNo=d.round||1;
   if(scores.p===0&&scores.a===0)history1=[];
   setup1v1UI(true,OPP1_NAME,d.selfName||'You');
-  G={mode:'client',pH:(d.tiles||[]).map(t=>[t[0],t[1]]),aH:Array(d.oppCount||7).fill([0,0]),by:Array(d.byCount||0).fill([0,0]),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0};
+  G={mode:'client',pH:(d.tiles||[]).map(t=>[t[0],t[1]]),aH:Array(d.oppCount||7).fill([0,0]),by:Array(d.byCount||0).fill([0,0]),bd:[],L:-1,R:-1,turn:null,sel:null,phase:'play',aiOn:false,passes:0,forceOpen:(d.forceOpen!=null?d.forceOpen:null)};
   $('ov').classList.remove('on');showScreen('screen-1v1');_deal1=true;render1v1();
 }
 function clientState1(s){
@@ -1756,28 +1771,30 @@ function clientRoundOver1(d){
 
 <script>
 // ═══ 2v2 GAME STATE ═══
-let G2H={},G2C={myTiles:[],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:0,phase:'play',scores:{A:0,B:0},round:0,sel:null,lastAct:''};
+let G2H={},G2C={myTiles:[],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:0,phase:'play',scores:{A:0,B:0},round:0,sel:null,lastAct:'',forceOpen:null};
 let next2First=null; // seat 0..3 who starts the NEXT round (round winner, or last placer on a blocked round). null = first round, use highest double.
 function hostDeal(){
   const prevScores=G2H.scores||{A:0,B:0};const prevRound=G2H.round||0;
   MODE='2v2';_lastAct2='';if(prevScores.A===0&&prevScores.B===0){history2=[];next2First=null}
   const deck=shuffle(ALL_TILES); // 4×7=28, all dealt, no boneyard
-  G2H={hands:[deck.slice(0,7),deck.slice(7,14),deck.slice(14,21),deck.slice(21,28)],board:[],L:-1,R:-1,turn:0,phase:'play',passes:0,scores:{...prevScores},round:prevRound+1,lastAct:''};
-  outer:for(let d=6;d>=0;d--)for(let p=0;p<4;p++)if(G2H.hands[p].some(([a,b])=>a===d&&b===d)){G2H.turn=p;break outer}
+  G2H={hands:[deck.slice(0,7),deck.slice(7,14),deck.slice(14,21),deck.slice(21,28)],board:[],L:-1,R:-1,turn:0,phase:'play',passes:0,scores:{...prevScores},round:prevRound+1,lastAct:'',forceOpen:null};
+  let openDbl=-1;
+  outer:for(let d=6;d>=0;d--)for(let p=0;p<4;p++)if(G2H.hands[p].some(([a,b])=>a===d&&b===d)){G2H.turn=p;openDbl=d;break outer}
   if(next2First!=null&&next2First>=0&&next2First<4)G2H.turn=next2First; // carry-over: winner / last placer of previous round starts
+  else if(openDbl>=0)G2H.forceOpen=openDbl; // first round: opener must open with the highest double
   for(let s=1;s<=3;s++)sendTo(s,{type:'deal',tiles:G2H.hands[s],scores:G2H.scores,round:G2H.round});
-  G2C={myTiles:[...G2H.hands[0]],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:G2H.turn,phase:'play',scores:{...G2H.scores},round:G2H.round,sel:null,lastAct:''};
+  G2C={myTiles:[...G2H.hands[0]],board:[],handCounts:[7,7,7,7],L:-1,R:-1,turn:G2H.turn,phase:'play',scores:{...G2H.scores},round:G2H.round,sel:null,lastAct:'',forceOpen:G2H.forceOpen};
   g2SetupUI();showScreen('screen-2v2');_deal2=true;g2ArmTurnTimer();G2Render();
   broadcastAll({type:'show_game'});broadcastAll({type:'state',s:g2PublicState()});
   specShow();
 }
-function g2PublicState(){return{board:G2H.board,handCounts:G2H.hands.map(h=>h.length),L:G2H.L,R:G2H.R,turn:G2H.turn,phase:G2H.phase,scores:G2H.scores,round:G2H.round,lastAct:G2H.lastAct,turnMs:ttRemainMs()}}
-function g2ClientApply(st){G2C.board=st.board;G2C.handCounts=st.handCounts;G2C.L=st.L;G2C.R=st.R;G2C.turn=st.turn;G2C.phase=st.phase;G2C.scores=st.scores;G2C.round=st.round;G2C.lastAct=st.lastAct;ttClientSync(st.turnMs||0);G2Render()}
+function g2PublicState(){return{board:G2H.board,handCounts:G2H.hands.map(h=>h.length),L:G2H.L,R:G2H.R,turn:G2H.turn,phase:G2H.phase,scores:G2H.scores,round:G2H.round,lastAct:G2H.lastAct,forceOpen:G2H.forceOpen,turnMs:ttRemainMs()}}
+function g2ClientApply(st){G2C.board=st.board;G2C.handCounts=st.handCounts;G2C.L=st.L;G2C.R=st.R;G2C.turn=st.turn;G2C.phase=st.phase;G2C.scores=st.scores;G2C.round=st.round;G2C.lastAct=st.lastAct;G2C.forceOpen=(st.forceOpen!=null?st.forceOpen:null);ttClientSync(st.turnMs||0);G2Render()}
 function g2SyncAll(){
   g2ArmTurnTimer(); // set the deadline first so the broadcast carries the remaining time
   const st=g2PublicState();
   G2C.board=G2H.board;G2C.handCounts=G2H.hands.map(h=>h.length);G2C.L=G2H.L;G2C.R=G2H.R;
-  G2C.turn=G2H.turn;G2C.phase=G2H.phase;G2C.scores=G2H.scores;G2C.round=G2H.round;G2C.lastAct=G2H.lastAct;
+  G2C.turn=G2H.turn;G2C.phase=G2H.phase;G2C.scores=G2H.scores;G2C.round=G2H.round;G2C.lastAct=G2H.lastAct;G2C.forceOpen=G2H.forceOpen;
   if(NET.seat===0)G2C.myTiles=[...G2H.hands[0]];G2C.sel=null;G2Render();
   broadcastAll({type:'state',s:st});
   pushSpec();
@@ -1816,7 +1833,8 @@ function hostApplyMove(seat,data){
     const idx=G2H.hands[seat].findIndex(([a,b])=>tile&&a===tile[0]&&b===tile[1]);
     if(idx===-1){resync();return}
     const t=G2H.hands[seat][idx];
-    if(G2H.L!==-1&&!tileFits(t,side==='left'?G2H.L:G2H.R)){resync();return}
+    if(G2H.L===-1){if(G2H.forceOpen!=null&&!(t[0]===G2H.forceOpen&&t[1]===G2H.forceOpen)){resync();return}}
+    else if(!tileFits(t,side==='left'?G2H.L:G2H.R)){resync();return}
     g2HostPlace(t,side);G2H.hands[seat].splice(idx,1);G2H.passes=0;G2H.lastPlacer=seat;
     G2H.lastAct=`${NET.players[seat]||'P'+(seat+1)} played [${t[0]}|${t[1]}]`;
     if(G2H.hands[seat].length===0){g2EndRound(seat);return}
@@ -1831,7 +1849,7 @@ function hostApplyMove(seat,data){
 }
 function g2HostPlace(tile,side){
   const[a,b]=tile,dbl=a===b;let obj;
-  if(G2H.L===-1){obj={left:a,right:b,dbl};G2H.L=a;G2H.R=b;G2H.board.push(obj)}
+  if(G2H.L===-1){obj={left:a,right:b,dbl};G2H.L=a;G2H.R=b;G2H.board.push(obj);G2H.forceOpen=null}
   else if(side==='left'){const m=G2H.L,o=a===m?b:a;obj={left:o,right:m,dbl};G2H.L=o;G2H.board.unshift(obj)}
   else{const m=G2H.R,o=a===m?b:a;obj={left:m,right:o,dbl};G2H.R=o;G2H.board.push(obj)}
   obj.fresh=true;setTimeout(()=>delete obj.fresh,450);
@@ -1870,7 +1888,8 @@ function g2EndBlocked(){
 function g2PlayIdx(idx,side){
   if(G2C.turn!==NET.seat||G2C.phase!=='play')return false;
   const t=G2C.myTiles[idx];if(!t)return false;
-  if(G2C.L!==-1&&!tileFits(t,side==='left'?G2C.L:G2C.R))return false;
+  if(G2C.L===-1){if(G2C.forceOpen!=null&&!(t[0]===G2C.forceOpen&&t[1]===G2C.forceOpen))return false}
+  else if(!tileFits(t,side==='left'?G2C.L:G2C.R))return false;
   const msg={type:'action',action:'play',tile:t,side};
   if(NET.role==='host')hostApplyMove(0,msg);
   else{G2C.sel=null;G2C.myTiles.splice(idx,1);sendHost(msg);G2Render()}
@@ -1931,7 +1950,10 @@ function g2RenderTop(){
   if(G2C.phase!=='play'){$('g2-stat').textContent='';$('g2-stat').className='stat';return}
   const tname=NET.players[turn]||(turn===my?'You':'P'+(turn+1));
   if(turn===my){
-    if(G2C.L===-1)g2ShowStat('🎯 First move — drag any tile onto the table!','gold');
+    if(G2C.L===-1){
+      if(G2C.forceOpen!=null)g2ShowStat(`🎯 Open with your double [${G2C.forceOpen}|${G2C.forceOpen}]!`,'gold');
+      else g2ShowStat('🎯 First move — drag any tile onto the table!','gold');
+    }
     else if(G2C.sel!==null){const t=G2C.myTiles[G2C.sel],vs=g2VSides(t);vs.length?g2ShowStat(`✅ [${t[0]}|${t[1]}] selected — drop on the table!`,'grn'):g2ShowStat(`⚠️ [${t[0]}|${t[1]}] can't play — try another tile`,'red')}
     else if(!anyValid(G2C.myTiles,G2C.L,G2C.R))g2ShowStat('⏭ No valid moves — كاعد عالعير!','red');
     else g2ShowStat('🖱 Drag a tile onto the table','');
@@ -1952,7 +1974,11 @@ function g2RenderHand(){
   $('g2-hand').innerHTML=(G2C.myTiles||[]).map((tile,i)=>{
     const[a,b]=tile;let cls='';
     if(myTurn){
-      if(G2C.sel===i)cls='sel';
+      if(G2C.L===-1&&G2C.forceOpen!=null){
+        const isDbl=a===G2C.forceOpen&&b===G2C.forceOpen; // first round: only the highest double may open
+        cls=isDbl?(G2C.sel===i?'sel':'hi-B'):'dim';
+      }
+      else if(G2C.sel===i)cls='sel';
       else{const cL=G2C.L===-1||tileFits(tile,G2C.L),cR=G2C.L===-1||tileFits(tile,G2C.R);if(!cL&&!cR)cls='dim';else if(cL&&cR)cls='hi-B';else cls=cL?'hi-L':'hi-R'}
     }
     const itemCls=_deal2?'hand-item deal':'hand-item';
@@ -2035,7 +2061,16 @@ function makePlacement(ctx){
     if(cL&&!cR)return 'left';if(cR&&!cL)return 'right';return x<rect.width/2?'left':'right';
   }
   function insSide(pt,item){const r=item.getBoundingClientRect();return pt.clientX<r.left+r.width/2?'left':'right'}
-  function boardPlayable(idx){if(!ctx.canPlay())return false;const t=ctx.tile(idx);if(!t)return false;const e=ctx.ends();return e.L===-1||tileValid(t,e.L,e.R)}
+  function boardPlayable(idx){if(!ctx.canPlay())return false;const t=ctx.tile(idx);if(!t)return false;const e=ctx.ends();if(e.L===-1){const mo=ctx.mustOpenWith&&ctx.mustOpenWith();if(mo)return t[0]===mo[0]&&t[1]===mo[1];return true}return tileValid(t,e.L,e.R)}
+  // First round only: the opener may play just the highest double. Returns true
+  // (and toasts) if the chosen tile is NOT that required opening double.
+  function blockedOpen(idx){
+    const mo=ctx.mustOpenWith&&ctx.mustOpenWith();if(!mo)return false;
+    const t=ctx.tile(idx);
+    if(t&&t[0]===mo[0]&&t[1]===mo[1])return false;
+    toast(`Open with the double [${mo[0]}|${mo[1]}]`);
+    return true;
+  }
   // ── DRAG (mouse / pointer) — note: NEVER re-render here or the drag is cancelled ──
   function onDragStart(e,i){
     dragIdx=i;
@@ -2055,6 +2090,7 @@ function makePlacement(ctx){
     e.preventDefault();const idx=dragIdx;dragIdx=null;clearHL();clearIns();
     if(idx==null)return;
     if(!ctx.canPlay()){toast('⏳ Not your turn yet');return}
+    if(blockedOpen(idx))return;
     const en=ctx.ends(),t=ctx.tile(idx);
     if(en.L!==-1&&!tileValid(t,en.L,en.R)){toast("That tile doesn't match either end");return}
     const side=sideFromX(e.clientX,idx);
@@ -2062,6 +2098,7 @@ function makePlacement(ctx){
   }
   function onBoardClick(e){
     if(!ctx.canPlay())return;const sel=ctx.getSel();if(sel==null)return;
+    if(blockedOpen(sel))return;
     const en=ctx.ends(),t=ctx.tile(sel);
     if(en.L!==-1&&!tileValid(t,en.L,en.R)){toast("That tile doesn't match either end");return}
     const side=sideFromX(e.clientX,sel);
@@ -2111,6 +2148,7 @@ function makePlacement(ctx){
     const under=document.elementFromPoint(tch.clientX,tch.clientY),idx=touchIdx;touchIdx=null;
     if(under&&under.closest('#'+ctx.boardAreaId)){
       if(!ctx.canPlay()){toast('⏳ Not your turn yet');return}
+      if(blockedOpen(idx))return;
       const en=ctx.ends(),t=ctx.tile(idx);
       if(en.L!==-1&&!tileValid(t,en.L,en.R)){toast("That tile doesn't match either end");return}
       const side=sideFromX(tch.clientX,idx);if(!ctx.playIdx(idx,side))toast("Doesn't match!");
@@ -2167,6 +2205,7 @@ const P1=makePlacement({
   canPlay:()=>!!G&&G.turn==='p'&&G.phase==='play'&&!G.aiOn,
   tile:i=>G.pH[i],
   ends:()=>({L:G.L,R:G.R}),
+  mustOpenWith:()=>(G&&G.L===-1&&G.forceOpen!=null)?[G.forceOpen,G.forceOpen]:null,
   getSel:()=>G.sel,
   setSel:i=>{G.sel=i;Sfx.play('select');render1v1()},
   toggleSel:i=>{const was=G.sel;G.sel=(G.sel===i?null:i);if(G.sel!==null&&G.sel!==was)Sfx.play('select');render1v1()},
@@ -2178,6 +2217,7 @@ const P2=makePlacement({
   canPlay:()=>!!G2C&&G2C.turn===NET.seat&&G2C.phase==='play',
   tile:i=>G2C.myTiles[i],
   ends:()=>({L:G2C.L,R:G2C.R}),
+  mustOpenWith:()=>(G2C&&G2C.L===-1&&G2C.forceOpen!=null)?[G2C.forceOpen,G2C.forceOpen]:null,
   getSel:()=>G2C.sel,
   setSel:i=>{G2C.sel=i;Sfx.play('select');G2Render()},
   toggleSel:i=>{const was=G2C.sel;G2C.sel=(G2C.sel===i?null:i);if(G2C.sel!==null&&G2C.sel!==was)Sfx.play('select');G2Render()},

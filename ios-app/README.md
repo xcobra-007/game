@@ -104,6 +104,34 @@ string), or **developer.apple.com/account** → Membership.
 - A free Apple ID build only runs for ~7 days and only on the device it was signed
   for; that's expected without the paid Developer Program.
 
+## Building the `.ipa` without a Mac (GitHub Actions)
+
+No Mac? A workflow at [`.github/workflows/build-ios-ipa.yml`](../.github/workflows/build-ios-ipa.yml)
+builds the app on GitHub's **free macOS runners** and uploads the `.ipa` as a
+downloadable artifact.
+
+**To run it:** GitHub repo → **Actions** tab → **Build iOS IPA** → **Run workflow**.
+When it finishes, download the `dominoes-ios-ipa` artifact from the run summary.
+
+It has two modes, chosen automatically:
+
+- **Unsigned (default, no setup).** Always produces `App-unsigned.ipa`. You install
+  it by re-signing on-device with a free tool such as
+  [AltStore](https://altstore.io) or [Sideloadly](https://sideloadly.io) using your
+  own Apple ID (the same ~7-day free-signing limit as Xcode).
+- **Signed (optional).** If you add these repository **secrets**, it also exports a
+  properly signed `.ipa` via `xcodebuild`:
+
+  | Secret | What it is |
+  |---|---|
+  | `APPLE_TEAM_ID` | your 10-char Apple Developer Team ID |
+  | `BUILD_CERTIFICATE_BASE64` | `base64` of your signing `.p12` |
+  | `P12_PASSWORD` | password for that `.p12` |
+  | `PROVISIONING_PROFILE_BASE64` | `base64` of a matching `.mobileprovision` |
+  | `EXPORT_METHOD` | `development` / `ad-hoc` / `app-store` (default `development`) |
+
+  Create the base64 values with e.g. `base64 -i cert.p12 | pbcopy`.
+
 ## App icon (optional)
 
 To generate iOS icons from a single source image, you can use

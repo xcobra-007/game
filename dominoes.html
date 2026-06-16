@@ -265,7 +265,7 @@ body{
 .overlay{position:fixed;inset:0;background:rgba(13,13,26,.82);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
 .overlay.on{display:flex;animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-.ov-card{position:relative;background:rgba(45,27,78,.92);border:6px solid var(--c3);border-radius:28px;padding:36px 40px;text-align:center;max-width:380px;width:92%;box-shadow:0 0 40px rgba(255,58,242,.45),12px 12px 0 var(--c1),24px 24px 0 var(--c2);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
+.ov-card{position:relative;background:rgba(45,27,78,.92);border:6px solid var(--c3);border-radius:28px;padding:36px 40px;text-align:center;max-width:380px;width:92%;max-height:90vh;overflow-y:auto;box-shadow:0 0 40px rgba(255,58,242,.45),12px 12px 0 var(--c1),24px 24px 0 var(--c2);animation:slideUp .3s cubic-bezier(.34,1.56,.64,1)}
 @keyframes slideUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 .ov-em{font-size:4.4rem;display:block;line-height:1.1;animation:wobble .5s ease;filter:drop-shadow(0 0 16px rgba(255,230,0,.6))}
 @keyframes wobble{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
@@ -276,7 +276,7 @@ body{
 .ov-sc-v{font-size:2rem;font-weight:900;color:var(--c3);font-family:var(--font-head)}
 .ov-sc-l{font-size:.6rem;color:var(--txt-d);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
 .ov-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.ov-btn{padding:12px 26px;border-radius:9999px;font-weight:900;font-size:.84rem;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-head);cursor:pointer;border:3px solid;transition:transform .18s,box-shadow .18s,background .18s}
+.ov-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:12px 26px;border-radius:9999px;font-weight:900;font-size:.84rem;text-transform:uppercase;letter-spacing:.06em;font-family:var(--font-head);cursor:pointer;border:3px solid;transition:transform .18s,box-shadow .18s,background .18s}
 .ov-btn.gold{background:linear-gradient(90deg,#FF3AF2,#7B2FFF,#00F5D4);background-size:200% 100%;color:#0D0D1A;border-color:#FFE600;box-shadow:0 0 20px rgba(255,58,242,.5)}
 .ov-btn.gold:hover{transform:scale(1.05);animation:gshift 1.2s linear infinite alternate;box-shadow:0 0 32px rgba(255,58,242,.7)}
 .ov-btn.ghost{background:transparent;color:var(--c2);border:3px dashed var(--c2)}
@@ -328,7 +328,7 @@ body{
 </div>
 
 <!-- ═══ LOBBY ═══ -->
-<div id="screen-lobby" style="display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:32px 20px;max-width:420px;width:100%">
+<div id="screen-lobby" style="display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:32px 20px calc(32px + env(safe-area-inset-bottom,16px));max-width:420px;width:100%">
   <div class="scr-title" id="lb-mode-title" style="font-size:1.9rem;font-weight:900;color:#fff">🎮 2v2 Online</div>
   <div style="color:var(--txt-d);font-size:.85rem" id="lb-mode-sub">2 teams of 2 · everyone on their own device</div>
   <div class="lb-card"><h3>Your Name</h3><input id="lb-name" class="lb-input" placeholder="Enter your name…" maxlength="16"></div>
@@ -354,7 +354,7 @@ body{
 </div>
 
 <!-- ═══ WAITING ROOM ═══ -->
-<div id="screen-waiting" style="display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:32px 20px;max-width:400px;width:100%">
+<div id="screen-waiting" style="display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:32px 20px calc(32px + env(safe-area-inset-bottom,16px));max-width:400px;width:100%">
   <div class="scr-title" style="font-size:1.7rem;font-weight:900;color:#fff" id="wr-title">Waiting for players…</div>
   <div style="color:var(--txt-d);font-size:.85rem" id="wr-sub">Share the room code with 3 friends</div>
   <div class="wr-code-box" onclick="copyCode()" id="wr-code-box" style="display:none">
@@ -511,6 +511,7 @@ body{
 
 <!-- ═══ FLOATING CONTROLS ═══ -->
 <div class="fab-bar">
+  <button class="fab fab-back" id="menu-btn" title="Back to menu" onclick="quitToMenu()" style="display:none">←</button>
   <button class="fab" id="snd-btn" title="Sound on / off" onclick="toggleSound()">🔊</button>
   <button class="fab" id="sb-btn" title="Scoreboard" onclick="openScoreboard()">📊</button>
 </div>
@@ -571,6 +572,8 @@ body{
 .fab{width:42px;height:42px;border-radius:50%;border:3px solid var(--c3);background:rgba(45,27,78,.85);color:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;box-shadow:0 0 14px rgba(255,230,0,.4)}
 .fab:hover{transform:scale(1.12) rotate(-6deg);box-shadow:0 0 22px rgba(255,230,0,.7)}
 .fab:active{transform:scale(.9)}
+.fab-back{border-color:var(--c1);box-shadow:0 0 14px rgba(255,58,242,.45);font-family:var(--font-head);font-weight:900}
+.fab-back:hover{box-shadow:0 0 22px rgba(255,58,242,.75)}
 /* ── QUICK CHAT (bottom-left) ── */
 .chat-bar{position:fixed;bottom:10px;left:10px;display:none;flex-direction:column;align-items:flex-start;gap:8px;z-index:151}
 .chat-menu{display:none;flex-direction:column;gap:6px;background:rgba(45,27,78,.94);border:3px solid var(--c2);border-radius:16px;padding:8px;box-shadow:0 0 22px rgba(0,245,212,.45);max-width:min(80vw,300px)}
@@ -669,6 +672,16 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
   .mc-label{font-size:1.15rem}
   .mc-sub{font-size:.6rem}
 
+  /* ── PROFILE/STATS: drop below the mode cards so cards are visible first ── */
+  .pf-open-btn{order:5}
+  .set-card{order:4;flex-direction:column;gap:8px;width:100%}
+  .mode-cards{order:3}
+
+  /* ── SETTINGS CHIPS: consistent 2x2 grid so they never wrap unpredictably ── */
+  .set-row{flex-direction:column;align-items:stretch;gap:6px;width:100%}
+  .set-chips{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;width:100%}
+  .set-chip{text-align:center}
+
   /* ── LOBBY / WAITING: scrollable + tighter ── */
   #screen-lobby,#screen-waiting{max-height:100dvh;overflow-y:auto;overflow-x:hidden;padding:20px 14px;gap:13px}
   .scr-title{font-size:1.5rem!important}
@@ -732,6 +745,16 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
   .pip-lbl{font-size:.52rem;min-width:15px}
   .side-panel{width:48px}
   .mc-label{font-size:1.05rem}
+}
+
+/* ── Tiny phones (≤360px, e.g. Galaxy A / older iPhone): keep the full hand in
+   one swipeable row instead of clipping the rightmost tile ── */
+@media (max-width:360px){
+  .hand-wrap{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;justify-content:flex-start;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .hand-item{scroll-snap-align:center;flex-shrink:0}
+  .tile.H-lg{width:36px;height:70px}
+  .tile.H-lg .dot{width:5px;height:5px}
+  .pip-lbl{font-size:.5rem;min-width:14px}
 }
 
 /* ── Landscape phones: prioritise the board, trim vertical chrome ── */
@@ -814,9 +837,15 @@ const SCREENS=['screen-menu','screen-lobby','screen-waiting','screen-1v1','scree
 function showScreen(id){
   SCREENS.forEach(s=>{const e=$(s);if(e)e.style.display=s===id?'flex':'none'});
   const cb=$('chat-bar');if(cb)cb.style.display=(id==='screen-1v1'||id==='screen-2v2')?'flex':'none';
+  const mb=$('menu-btn');if(mb)mb.style.display=(id==='screen-1v1'||id==='screen-2v2'||id==='screen-spectate')?'flex':'none';
   if(typeof closeChatMenu==='function')closeChatMenu();
 }
 function goMenu(){netDestroy();$('ov').classList.remove('on');showScreen('screen-menu')}
+function quitToMenu(){
+  const inGame=$('screen-1v1').style.display!=='none'||$('screen-2v2').style.display!=='none';
+  if(inGame&&!confirm('Leave the game and return to the menu?'))return;
+  goMenu();
+}
 let ONLINE_MODE='2v2';
 function goLobby(mode){
   if(mode)ONLINE_MODE=mode;

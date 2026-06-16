@@ -84,6 +84,18 @@ body{
 .spec-tot{width:100%;text-align:center;color:#fff;font-weight:700;font-size:.9rem;margin-top:2px}
 .spec-tot b{color:var(--c3);font-family:var(--font-head);font-size:1.1rem}
 .spec-banner{margin:4px auto 16px;background:rgba(13,13,26,.82);border:4px solid var(--c3);border-radius:16px;padding:12px 26px;font-family:var(--font-head);font-weight:900;font-size:1.1rem;color:var(--c3);text-align:center;max-width:90%;box-shadow:0 0 24px rgba(255,230,0,.45)}
+/* ── "ملص" SHUTOUT SLAM ── */
+.mels-stamp{position:fixed;z-index:360;pointer-events:none;font-family:'Lalezar','Rakkas',var(--font-accent),cursive;font-weight:900;font-size:clamp(4.5rem,24vw,12rem);line-height:1;color:var(--c3);text-shadow:5px 5px 0 var(--c1),10px 10px 0 var(--c5),0 0 46px rgba(255,230,0,.75);transform:translate(-50%,-50%) rotate(-9deg);animation:melsSlam 2.3s cubic-bezier(.2,1.35,.3,1) forwards}
+@keyframes melsSlam{
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(-9deg) scale(4.2)}
+  16%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(.9)}
+  28%{transform:translate(-50%,-50%) rotate(-9deg) scale(1.1)}
+  40%{transform:translate(-50%,-50%) rotate(-9deg) scale(1)}
+  82%{opacity:1;transform:translate(-50%,-50%) rotate(-9deg) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-58%) rotate(-9deg) scale(1.08)}
+}
+.mels-shake{animation:melsShake .6s ease}
+@keyframes melsShake{0%,100%{transform:translate(0,0)}15%{transform:translate(-8px,5px)}30%{transform:translate(9px,-5px)}45%{transform:translate(-6px,-4px)}60%{transform:translate(6px,4px)}75%{transform:translate(-4px,2px)}}
 </style>
 </head>
 <body>
@@ -454,7 +466,7 @@ body{
     <button class="lb-back" style="margin-left:auto" onclick="goMenu()">← Leave</button>
   </div>
   <div class="board-outer">
-    <div class="board-area">
+    <div class="board-area" id="spec-board-area">
       <div class="board-scroll" id="spec-scroll"><div class="board-chain" id="spec-chain"><div class="board-ph">Waiting for the game…</div></div></div>
     </div>
   </div>
@@ -1387,7 +1399,7 @@ function specState2(){
 function buildSpecState(){return NET.mode==='1v1'?specState1():specState2()}
 function pushSpec(){if(!hasSpecs())return;const st=buildSpecState();if(st)broadcastSpecs({type:'spec_state',s:st})}
 function specShow(){if(!hasSpecs())return;broadcastSpecs({type:'spec_show',mode:NET.mode});pushSpec()}
-function specResult(text){if(hasSpecs())broadcastSpecs({type:'spec_result',text})}
+function specResult(text,mels){if(hasSpecs())broadcastSpecs({type:'spec_result',text,mels:!!mels})}
 function onFromSpec(sid,conn,data){
   if(!data||typeof data!=='object')return;
   if(data.type==='join'){conn._name=(''+(data.name||'')).slice(0,24)}
@@ -1578,7 +1590,7 @@ function onFromHost(data){
     // ── spectator ──
     case 'spec_show':MODE=data.mode||NET.mode;showScreen('screen-spectate');{const b=$('spec-banner');if(b)b.style.display='none'}break;
     case 'spec_state':specRender(data.s);break;
-    case 'spec_result':{const b=$('spec-banner');if(b){b.style.display='block';b.textContent=data.text||''}break;}
+    case 'spec_result':{if(data.mels)melsHit('spec-chain','spec-board-area');const b=$('spec-banner');if(b){b.style.display='block';b.textContent=data.text||''}break;}
   }
 }
 const SEAT_LABELS=['Host','Player 2','Player 3','Player 4'];
@@ -1840,7 +1852,7 @@ function g2EndRound(winner){
   G2C.scores={...G2H.scores};G2C.phase='over';
   const isMyTeam=(NET.seat%2===0&&wt==='A')||(NET.seat%2===1&&wt==='B');
   if(isMyTeam)confetti();showOv2v2(rd);broadcastAll(rd);
-  specResult(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won the round  +${pts}`);
+  specResult(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won the round  +${pts}`, mw&&G2H.scores[mw==='A'?'B':'A']===0);
 }
 function g2EndBlocked(){
   G2H.phase='over';
@@ -1853,7 +1865,7 @@ function g2EndBlocked(){
   G2C.scores={...G2H.scores};G2C.phase='over';
   const isMyTeam=(NET.seat%2===0&&wt==='A')||(NET.seat%2===1&&wt==='B');
   if(isMyTeam&&wt!=='D')confetti();showOv2v2(rd);broadcastAll(rd);
-  specResult(wt==='D'?'🤝 Blocked — draw':(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won (blocked)  +${pts}`));
+  specResult(wt==='D'?'🤝 Blocked — draw':(mw?`🏆 Team ${mw} wins the match!`:`Team ${wt} won (blocked)  +${pts}`), mw&&G2H.scores[mw==='A'?'B':'A']===0);
 }
 function g2PlayIdx(idx,side){
   if(G2C.turn!==NET.seat||G2C.phase!=='play')return false;
@@ -1953,6 +1965,31 @@ function g2RenderCtrl(){
   const myTurn=G2C.turn===NET.seat&&G2C.phase==='play';
   $('g2-bP').disabled=!(myTurn&&!anyValid(G2C.myTiles,G2C.L,G2C.R));
 }
+// "ملص" — the shutout slam. When a team wins the match while the other team is
+// still on zero (lost every round), a giant stamp drops on the table and every
+// tile on the board scatters off. Runs on every device (players + spectators).
+function melsHit(chainId,areaId){
+  const chain=$(chainId);
+  if(chain){
+    chain.querySelectorAll('.tile').forEach((t,i)=>{
+      const dx=(Math.random()*2-1)*Math.max(320,window.innerWidth*0.55);
+      const dy=(-0.25-Math.random())*Math.max(280,window.innerHeight*0.5);
+      const rot=(Math.random()*2-1)*600;
+      t.style.transition='transform .9s cubic-bezier(.25,.85,.3,1),opacity .9s ease';
+      t.style.transitionDelay=(i*18)+'ms';
+      t.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg)`;
+      t.style.opacity='0';
+    });
+  }
+  const area=$(areaId);
+  if(area&&area.classList){area.classList.remove('mels-shake');void area.offsetWidth;area.classList.add('mels-shake');setTimeout(()=>area.classList.remove('mels-shake'),650);}
+  const r=area&&area.getBoundingClientRect?area.getBoundingClientRect():{left:0,top:0,width:window.innerWidth,height:window.innerHeight};
+  const el=document.createElement('div');el.className='mels-stamp';el.textContent='ملص';
+  el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2300);
+  try{Sfx.play('lose')}catch(e){}
+}
 function showOv2v2(rd){
   ttDisarm();
   const my=NET.seat,myTeam=my%2===0?'A':'B',oppTeam=myTeam==='A'?'B':'A';
@@ -1975,7 +2012,10 @@ function showOv2v2(rd){
     {label:NET.players[lOpp]||('Player '+(lOpp+1)),tiles:hands[lOpp]||[]},
     {label:NET.players[rOpp]||('Player '+(rOpp+1)),tiles:hands[rOpp]||[]}
   ]);
-  $('ov').classList.add('on');
+  // Shutout ("ملص"): match won while the losing team never scored.
+  const skunk=rd.matchWinner&&(rd.scores[rd.matchWinner==='A'?'B':'A']||0)===0;
+  if(skunk){melsHit('g2-b-chain','g2-board-area');setTimeout(()=>$('ov').classList.add('on'),1700);}
+  else $('ov').classList.add('on');
 }
 </script>
 

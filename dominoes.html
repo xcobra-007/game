@@ -1294,7 +1294,14 @@ function showOv1v1(result,pts,blocked,revealTiles,mw){
     else{nb.textContent='Next Round ▶';nb.onclick=(G&&G.mode==='host')?hostNextRound1:next1v1Round}
   }
   renderReveal(`👁 ${oppN}'s remaining tiles`,[{label:oppN,tiles:revealTiles||[]}]);
-  $('ov').classList.add('on');
+  // Shutout ("ملص"): match won while the loser never scored a single point.
+  const skunk=mw&&((mw==='me'&&scores.a===0)||(mw==='opp'&&scores.p===0));
+  if(skunk){
+    // defer the slam one frame so it lands on the freshly-rendered board (render1v1 runs right after)
+    requestAnimationFrame(()=>melsHit('b-chain','board-area'));
+    setTimeout(()=>$('ov').classList.add('on'),3000);
+  }
+  else $('ov').classList.add('on');
 }
 function render1v1(){r1Top();r1Board();r1Hands();r1Boneyard();r1Ctrl();
   const active=!!G&&G.turn==='p'&&!G.aiOn&&G.phase==='play';
@@ -2046,7 +2053,7 @@ function melsHit(chainId,areaId){
     });
   }
   // shake the whole game screen
-  const screen=$(areaId==='spec-board-area'?'screen-spectate':'screen-2v2');
+  const screen=$(areaId==='spec-board-area'?'screen-spectate':areaId==='board-area'?'screen-1v1':'screen-2v2');
   if(screen&&screen.classList){screen.classList.remove('mels-quake');void screen.offsetWidth;screen.classList.add('mels-quake');setTimeout(()=>screen.classList.remove('mels-quake'),850);}
   const el=document.createElement('div');el.className='mels-stamp';el.textContent='ملص';
   el.style.left=(r.left+r.width/2)+'px';el.style.top=(r.top+r.height/2)+'px';

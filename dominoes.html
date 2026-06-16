@@ -703,6 +703,11 @@ body{overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-co
   .stat{font-size:.72rem}
   .rnd-chip{font-size:.58rem;padding:3px 9px}
 
+  /* ── BOARD: allow horizontal swipe when a long run is shown at readable size ── */
+  .board-scroll{touch-action:pan-x pan-y;scrollbar-width:none}
+  .board-scroll::-webkit-scrollbar{display:none}
+  .board-line .tile{scroll-snap-align:center}
+
   /* ── HAND: shrink tiles so a full 7-tile hand fits one row ── */
   .hand-wrap{gap:5px;padding:5px 6px 4px;min-height:0}
   .tile.H-lg{width:44px;height:86px;border-radius:10px}
@@ -910,14 +915,36 @@ function renderChain(bd,chainId,scrollId){
 function fitChain(chainId,scrollId){
   const chain=$(chainId),scroll=$(scrollId);
   if(!chain||!scroll)return;
-  chain.style.transform='';
+  chain.style.transform='';chain.style.width='';
   scroll.style.overflowX='hidden';scroll.style.justifyContent='center';
   const availW=scroll.clientWidth-14,availH=scroll.clientHeight-8;
   const natW=chain.scrollWidth,natH=chain.scrollHeight;
   if(natW<=0||natH<=0||availW<=0||availH<=0)return;
-  // Always scale the whole run to fit on screen — never scroll left/right to see tiles.
-  const fit=Math.min(availW/natW,availH/natH,1);
-  if(fit<1){chain.style.transform=`scale(${fit})`;chain.style.transformOrigin='center center'}
+  const idealFit=Math.min(availW/natW,availH/natH,1);
+  // On phones a long run scaled to fit the width becomes microscopic. Instead of
+  // shrinking it into oblivion, keep the tiles at a readable size (filling the
+  // available height) and let the player swipe the board left/right.
+  const small=Math.min(window.innerWidth,window.innerHeight)<=600;
+  const READABLE=0.6;
+  if(small&&idealFit<READABLE){
+    const scale=Math.max(Math.min(availH/natH,1),READABLE);
+    chain.style.transformOrigin='left center';
+    chain.style.transform=`scale(${scale})`;
+    chain.style.width=(natW*scale)+'px';            // reserve the scaled width so the row can scroll
+    scroll.style.overflowX='auto';
+    scroll.style.justifyContent='flex-start';
+    scroll.style.webkitOverflowScrolling='touch';
+    scroll.style.scrollSnapType='x proximity';
+    // Keep the most-recently-played end in view after a placement.
+    requestAnimationFrame(()=>{try{
+      const fresh=chain.querySelector('.tile.fresh');
+      if(fresh&&fresh.scrollIntoView)fresh.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
+      else scroll.scrollLeft=scroll.scrollWidth;
+    }catch(_){}});
+    return;
+  }
+  // Otherwise scale the whole run to fit on screen — no left/right scrolling needed.
+  if(idealFit<1){chain.style.transform=`scale(${idealFit})`;chain.style.transformOrigin='center center'}
 }
 // Append a stamp element and center it on the anchor rect, but CLAMP it so the
 // whole stamp stays on-screen (stamps are translate(-50%,-50%) via their animation).
